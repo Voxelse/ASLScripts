@@ -21,12 +21,12 @@ startup {
 
 	vars.stopwatch = new Stopwatch();
 
-	// 41FFD34883C420B8????????488930B8????????48C700
+	// 41FFD34883C420B8????????488930B8????????48C70000000000
 	vars.scanTargetPlayerCharacter = new SigScanTarget(8,
-		"41 FF D3",					// call r11
+		"41 FF D3",				// call r11
 		"48 83 C4 20",				// add rsp, 20
 		"B8 ????????",				// move eax, XXXXXXXX
-		"48 89 30",					// mov [rax], rsi
+		"48 89 30",				// mov [rax], rsi
 		"B8 ????????",				// mov eax , XXXXXXXX
 		"48 C7 00 00000000"			// mov qword ptr [rax], 00000000
 	);
@@ -42,25 +42,25 @@ startup {
 	});
 
 	vars.ScanPlayerPtr = (Action<Process>)((proc) => {
-		print("[Autosplitter] Scanning memory");
+		//print("[Autosplitter] Scanning memory");
 		if(vars.playerManagerInstructionPtr == IntPtr.Zero)
 			vars.playerManagerInstructionPtr = vars.PageScan(proc, vars.scanTargetPlayerCharacter);
 		
 		vars.playerManagerAddressPtr = proc.ReadValue<int>((IntPtr)vars.playerManagerInstructionPtr);
-		vars.playerAddr = new MemoryWatcher<int>((IntPtr)vars.playerManagerAddressPtr);
+		vars.playerAddr = new MemoryWatcher<IntPtr>((IntPtr)vars.playerManagerAddressPtr);
 		vars.playerAddr.Update(proc);
-		if(vars.playerAddr.Current != 0) {
-			print("[Autosplitter] Found : " + vars.playerManagerInstructionPtr.ToString("X") + ", " + vars.playerManagerAddressPtr.ToString("X") + ", " + vars.playerAddr.Current.ToString("X"));
+		if(vars.playerAddr.Current != IntPtr.Zero) {
+			//print("[Autosplitter] Found : " + vars.playerManagerInstructionPtr.ToString("X") + ", " + vars.playerManagerAddressPtr.ToString("X") + ", " + vars.playerAddr.Current.ToString("X"));
 
 			// PlayerCharacter
-			vars.invisible 				= new MemoryWatcher<byte>	((IntPtr)vars.playerAddr.Current + 0x1CA);
-			vars.scrollVoiceIndex 		= new MemoryWatcher<int>	((IntPtr)vars.playerAddr.Current + 0x878);
-			vars.stunned 				= new MemoryWatcher<byte>	((IntPtr)vars.playerAddr.Current + 0x885);
-			vars.isInPerkTutorial 		= new MemoryWatcher<byte>	((IntPtr)vars.playerAddr.Current + 0xAA0);
-			vars.isActivingSeekerEye 	= new MemoryWatcher<byte>	((IntPtr)vars.playerAddr.Current + 0xAB3);
+			vars.invisible 			= new MemoryWatcher<byte>	(vars.playerAddr.Current + 0x1CA);
+			vars.scrollVoiceIndex 		= new MemoryWatcher<int>	(vars.playerAddr.Current + 0x878);
+			vars.stunned 			= new MemoryWatcher<byte>	(vars.playerAddr.Current + 0x885);
+			vars.isInPerkTutorial 		= new MemoryWatcher<byte>	(vars.playerAddr.Current + 0xAA0);
+			vars.isActivingSeekerEye 	= new MemoryWatcher<byte>	(vars.playerAddr.Current + 0xAB3);
 			
 			// SeekerPlayer
-			vars.inControlOfBody		= new MemoryWatcher<byte>	((IntPtr)vars.playerAddr.Current + 0x874);
+			vars.inControlOfBody		= new MemoryWatcher<byte>	(vars.playerAddr.Current + 0x874);
 
 			vars.watchers = new MemoryWatcherList() {
 				vars.playerAddr,
@@ -71,7 +71,7 @@ startup {
 				vars.isActivingSeekerEye,
 				vars.inControlOfBody,
 			};
-		} else print("[Autosplitter] Empty Address");
+		}// else print("[Autosplitter] Empty Address");
 	});
 }
 
@@ -86,13 +86,13 @@ init {
 
 	vars.playerManagerInstructionPtr = IntPtr.Zero;
 
-	vars.playerAddr 			= new MemoryWatcher<int>	(IntPtr.Zero);
-	vars.invisible 				= new MemoryWatcher<byte>	(IntPtr.Zero);
-	vars.inControlOfBody 		= new MemoryWatcher<byte>	(IntPtr.Zero);
-	vars.scrollVoiceIndex 		= new MemoryWatcher<int>	(IntPtr.Zero);
-	vars.stunned 				= new MemoryWatcher<byte>	(IntPtr.Zero);
-	vars.isInPerkTutorial 		= new MemoryWatcher<byte>	(IntPtr.Zero);
-	vars.isActivingSeekerEye 	= new MemoryWatcher<byte>	(IntPtr.Zero);
+	vars.playerAddr 		= new MemoryWatcher<int>  (IntPtr.Zero);
+	vars.invisible 			= new MemoryWatcher<byte> (IntPtr.Zero);
+	vars.inControlOfBody 		= new MemoryWatcher<byte> (IntPtr.Zero);
+	vars.scrollVoiceIndex 		= new MemoryWatcher<int>  (IntPtr.Zero);
+	vars.stunned 			= new MemoryWatcher<byte> (IntPtr.Zero);
+	vars.isInPerkTutorial 		= new MemoryWatcher<byte> (IntPtr.Zero);
+	vars.isActivingSeekerEye 	= new MemoryWatcher<byte> (IntPtr.Zero);
 
 	vars.watchers = new MemoryWatcherList();
 
@@ -102,11 +102,12 @@ init {
 update {
 	vars.watchers.UpdateAll(game);
 
-	if (vars.stopwatch.ElapsedMilliseconds > 3000 && (vars.playerManagerInstructionPtr == IntPtr.Zero || vars.playerAddr.Current == 0)) {
+	if (vars.stopwatch.ElapsedMilliseconds > 3000 && (vars.playerManagerInstructionPtr == IntPtr.Zero || vars.playerAddr.Current == IntPtr.Zero)) {
 		vars.ScanPlayerPtr(game);
 		vars.stopwatch.Restart();
 	} else if (vars.stopwatch.ElapsedMilliseconds > 3000) {
-		vars.stopwatch.Reset();
+		//print("Inv " + vars.invisible.Current+", Voice "+vars.scrollVoiceIndex.Current+", Stunned "+vars.stunned.Current+", Perk "+vars.isInPerkTutorial.Current+", IsSeek "+vars.isActivingSeekerEye.Current+", CtrlBody "+vars.inControlOfBody.Current + ", InSeek " + vars.isPlayerSeeker);
+		vars.stopwatch.Restart();
 	}
 
 	if (vars.playerAddr.Changed)
@@ -135,11 +136,11 @@ split {
 			// Track if we went from a perk tutorial
 			// Store the number of perks because they are necessarily picked in the right order (could use unlockedPerks from player struct but unnecessarily complex)
 			if (vars.isInPerkTutorial.Current == 1 && ( (vars.perkNb == 1 && settings["climb"]) ||
-														(vars.perkNb == 2 && settings["glide"]) ||
-														(vars.perkNb == 3 && settings["sprint"]) ||
-														(vars.perkNb == 4 && settings["dash"]) ||
-														(vars.perkNb == 5 && settings["radar"]) ||
-														(vars.perkNb == 6 && settings["fly"]) ) ) {
+									(vars.perkNb == 2 && settings["glide"]) ||
+									(vars.perkNb == 3 && settings["sprint"]) ||
+									(vars.perkNb == 4 && settings["dash"]) ||
+									(vars.perkNb == 5 && settings["radar"]) ||
+									(vars.perkNb == 6 && settings["fly"]) ) ) {
 				++vars.perkNb;
 				return true;
 			}
