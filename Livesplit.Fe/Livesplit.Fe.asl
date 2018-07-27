@@ -65,27 +65,24 @@ startup {
 
 init {
     print("[Autosplitter] Scanning memory");
-    vars.playerManagerPtr = 0;
-
-    // Init the watchers because they are only assigned when loading a save
-    vars.playerAddr          = new MemoryWatcher<IntPtr> (IntPtr.Zero);
-    vars.invisible           = new MemoryWatcher<byte>(IntPtr.Zero);
-    vars.inControlOfBody     = new MemoryWatcher<byte>(IntPtr.Zero);
-    vars.scrollVoiceIndex    = new MemoryWatcher<int> (IntPtr.Zero);
-    vars.stunned             = new MemoryWatcher<byte>(IntPtr.Zero);
-    vars.isInPerkTutorial    = new MemoryWatcher<byte>(IntPtr.Zero);
-    vars.isActivingSeekerEye = new MemoryWatcher<byte>(IntPtr.Zero);
-    vars.watchers = new MemoryWatcherList();
+    IntPtr ptr = IntPtr.Zero;
 
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        IntPtr ptr = scanner.Scan(vars.scanTargetPlayer);
+        ptr = scanner.Scan(vars.scanTargetPlayer);
         if(ptr != IntPtr.Zero) {
-            vars.playerManagerPtr = game.ReadValue<int>(ptr);
-            vars.UpdatePointers(game);
             break;
         }
     }
+
+    // Waiting the game to create the playerManager instructions
+    if (ptr == IntPtr.Zero) {
+        Thread.Sleep(2000);
+        throw new Exception();
+    }
+
+    vars.playerManagerPtr = game.ReadValue<int>(ptr);
+    vars.UpdatePointers(game);
 
     Action resetVars = () => {
         vars.initFlag = 0;
