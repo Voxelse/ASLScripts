@@ -121,10 +121,9 @@ split {
         // Check if we went from a pseudo cinematic
         if(vars.invisible.Changed && vars.invisible.Current == 0) {
             
-            // Perk splits : Track if we ended a perk tutorial
             // Store the number of perks because they are necessarily picked in the right order (could use unlockedPerks from player struct but unnecessarily complex)
             if (vars.isInPerkTutorial.Current == 1)
-                return settings.ContainsKey("perk"+(++vars.perkNb)) && settings["perk"+vars.perkNb];
+                ++vars.perkNb;
 
             // Voice splits : Track if we ended a voice learning by checking if a new voice is acquired/equipped
             // Store known voices because the game only have a complex/not easily accessible struct of voices so it's easier to make a new one ourselves
@@ -133,6 +132,11 @@ split {
                 return settings.ContainsKey("song"+vars.scrollVoiceIndex.Current) && settings["song"+vars.scrollVoiceIndex.Current];
             }
         }
+
+        // Perk splits : Track if we ended a perk tutorial
+        if(vars.isInPerkTutorial.Changed && vars.isInPerkTutorial.Current == 0)
+            return settings["perk"+vars.perkNb];
+            
     } else {
         // End split : Track if we loss the control of the seeker
         if(vars.inControlOfBody.Changed && vars.inControlOfBody.Current == 0)
