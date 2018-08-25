@@ -12,4 +12,6 @@ Autosplitter for the game Woten
   * Splits :
     * Dialog with Aedling
     * Complete a map
-  * Ends when you touch the plinth
+    * Dialog with Statues
+  * Ends when you touch the pedestal
+  * Reset in the main menu
