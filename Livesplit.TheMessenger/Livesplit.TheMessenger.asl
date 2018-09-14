@@ -1,4 +1,7 @@
 state ("TheMessenger") {
+
+    //Need to change a lot of variables to DeepPointers when 64bits pointers will be supported
+
     //LevelManager
     string128 sceneName : "mono.dll", 0x002685E0, 0xA0, 0x610, 0x8, 0x48, 0x14;
     //ProgressionManager
@@ -19,6 +22,7 @@ state ("TheMessenger") {
 startup {
     settings.Add("Levels", true, "Levels");
     settings.Add("Inventory", true, "Inventory");
+    settings.Add("RoomTimer", false, "Individual Room Timer");
 
     settings.CurrentDefaultParent = "Levels";
         settings.Add("01_NinjaVillage", false, "Ninja Village");
@@ -339,7 +343,20 @@ startup {
         settings.Add("Seal_18361868372388", false, "Second");
         settings.Add("Seal_28602892356388", false, "Third");
 
+    //48894DF048B8????????????????488B00488BC8833900
+    vars.scanGameManager = new SigScanTarget(6,
+        "48 89 4D F0",             //mov [rbp-10],rcx
+        "48 B8 ????????????????",  //mov rax,????????????????
+        "48 8B 00",                //mov rax,[rax]
+        "48 8B C8",                //mov rcx,rax
+        "83 39 00"                 //cmp dword ptr [rcx],00
+    );
+
     vars.InitVars = (Action)(() => {
+        vars.previousRoomTime = vars.actualRoomTime = "0.00";
+        vars.roomTimer = new Stopwatch();
+        vars.lastRoomRect = vars.oldRoomRect = vars.currentRoomRect = 0;
+        vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
         vars.visitedLevels = new HashSet<string>();
         vars.currentCutsceneToSplit = vars.oldCutsceneToSplit = "";
         vars.currentChallengeRoomToSplit = vars.oldChallengeRoomToSplit = "";
@@ -362,15 +379,84 @@ startup {
     vars.ReadString = (Func<Process, long, int, string>)((proc, baseOffset, count) => {
         return proc.ReadString(proc.ReadPointer((IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
     });
+
+    vars.UpdateRoomTimer = (Action<Process, bool>)((proc, inMenu) => {
+        if(!inMenu) {
+            vars.gameManagerAddr.Update(proc);
+
+            //Update GameManager Pointer
+            if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)vars.gameInstructionPtr));
+                vars.gameManagerAddr.Update(proc);
+            }
+
+            //Update Room Rect
+            vars.oldRoomRect = vars.currentRoomRect;
+            vars.currentRoomRect = proc.ReadValue<int>(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x88)+0x20);
+
+            //Update times
+            if(vars.oldRoomRect != vars.currentRoomRect) {
+                if(vars.currentRoomRect == 0) {
+                    vars.roomTimer.Stop(); //Stop during loading
+                } else {
+                    if(vars.oldRoomRect == 0) {
+                        if(vars.lastRoomRect == vars.currentRoomRect) {
+                            vars.roomTimer.Start(); //Resume after loading
+                        } else {
+                            vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+                            vars.roomTimer.Restart(); //Restart after loading
+                        }
+                    } else {
+                        vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+                        vars.roomTimer.Restart(); //Restart
+                    }
+                    vars.lastRoomRect = vars.currentRoomRect;
+                }
+            }
+        }
+        vars.actualRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+    });
+
+    vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
+        var minutes = (timeSpan.Minutes > 0)?timeSpan.Minutes+":" : "";
+        var seconds = ((timeSpan.Minutes != 0 && timeSpan.Seconds < 10)?"0"+timeSpan.Seconds:timeSpan.Seconds.ToString())+".";
+        var milliseconds = timeSpan.Milliseconds.ToString("D3").Remove(2);
+        return minutes + seconds + milliseconds;
+    });
 }
 
 init {
+    vars.gameInstructionPtr = IntPtr.Zero;
+
+    if(settings["RoomTimer"]) {
+        print("[Autosplitter] Scanning memory");
+        foreach (var page in game.MemoryPages()) {
+            var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+            vars.gameInstructionPtr = scanner.Scan(vars.scanGameManager);
+            if(vars.gameInstructionPtr != IntPtr.Zero) {
+                print("[Autosplitter] Instruction Found : " + vars.gameInstructionPtr.ToString("X"));
+                break;
+            }
+        }
+
+        //Waiting for the game to have booted up
+        if (vars.gameInstructionPtr == IntPtr.Zero) {
+            Thread.Sleep(2000);
+            throw new Exception();
+        }
+    }
+
     vars.InitVars();
 }
 
 update {
-    //Don't update in main menu
-    if(current.sceneName == "") return false;
+    var inMenu = timer.CurrentPhase == TimerPhase.Running && current.sceneName == "";
+
+    if(settings["RoomTimer"])
+        vars.UpdateRoomTimer(game, inMenu);
+
+    //Don't update in main menu if running
+    if(inMenu) return false;
     
     //Remove empty id to match new inventory struct
     if(old.sceneName == "") {
@@ -424,7 +510,7 @@ update {
 }
 
 start {
-    if((old.sceneName == "Loader" || old.sceneName == "") && current.sceneName.StartsWith("Level_01")) {
+    if(!old.sceneName.StartsWith("Level") && current.sceneName.StartsWith("Level_01")) {
         vars.InitVars();
         return true;
     }
