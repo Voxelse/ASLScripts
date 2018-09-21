@@ -16,7 +16,7 @@ state ("TheMessenger") {
     int inventorySize    : "mono.dll", 0x002685E0, 0xA0, 0x4C8, 0x8, 0x48, 0x20, 0x30;
     int inventoryCount   : "mono.dll", 0x002685E0, 0xA0, 0x4C8, 0x8, 0x48, 0x20, 0x38;
     //EndingCutscene
-    long endMusic : "mono.dll", 0x0027CAA8, 0x68, 0x68, 0x10, 0x10, 0x80, 0x2B0;
+    long endMusic : "mono.dll", 0x00265A20, 0x138, 0x148, 0xC0, 0x0, 0x0, 0x68, 0x60, 0x2B0;
 }
 
 startup {
@@ -355,7 +355,7 @@ startup {
     vars.InitVars = (Action)(() => {
         vars.previousRoomTime = vars.actualRoomTime = "0.00";
         vars.roomTimer = new Stopwatch();
-        vars.lastRoomRect = vars.oldRoomRect = vars.currentRoomRect = 0;
+        vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
         vars.visitedLevels = new HashSet<string>();
         vars.currentCutsceneToSplit = vars.oldCutsceneToSplit = "";
@@ -391,16 +391,16 @@ startup {
             }
 
             //Update Room Rect
-            vars.oldRoomRect = vars.currentRoomRect;
-            vars.currentRoomRect = proc.ReadValue<int>(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x88)+0x20);
+            vars.oldRoomKey = vars.currentRoomKey;
+            vars.currentRoomKey = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x88)+0x10)+0x14, 32);
 
             //Update times
-            if(vars.oldRoomRect != vars.currentRoomRect) {
-                if(vars.currentRoomRect == 0) {
+            if(vars.oldRoomKey != vars.currentRoomKey) {
+                if(vars.currentRoomKey == "") {
                     vars.roomTimer.Stop(); //Stop during loading
                 } else {
-                    if(vars.oldRoomRect == 0) {
-                        if(vars.lastRoomRect == vars.currentRoomRect) {
+                    if(vars.oldRoomKey == "") {
+                        if(vars.lastRoomKey == vars.currentRoomKey) {
                             vars.roomTimer.Start(); //Resume after loading
                         } else {
                             vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
@@ -410,7 +410,7 @@ startup {
                         vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
                         vars.roomTimer.Restart(); //Restart
                     }
-                    vars.lastRoomRect = vars.currentRoomRect;
+                    vars.lastRoomKey = vars.currentRoomKey;
                 }
             }
         }
