@@ -5,6 +5,7 @@ state ("TheMessenger") {
     //LevelManager
     string128 sceneName : "mono.dll", 0x002685E0, 0xA0, 0x610, 0x8, 0x48, 0x14;
     //ProgressionManager
+    int checkpointIndex              : "mono.dll", 0x00268B58, 0x20, 0x58, 0x730, 0x38;
     int bossesDefeatedCount          : "mono.dll", 0x00268B58, 0x20, 0x58, 0x748, 0x18;
     int cutscenesPlayedCount         : "mono.dll", 0x00268B58, 0x20, 0x58, 0x758, 0x18;
     long cutscenesPlayedAddr         : "mono.dll", 0x00268B58, 0x20, 0x58, 0x758, 0x10;
@@ -466,7 +467,7 @@ update {
     if(inMenu) return false;
     
     //Remove empty id to match new inventory struct
-    if(old.sceneName == "") {
+    if(!old.sceneName.StartsWith("Level")) {
         for(int i = 2; i < vars.itemId.Count; i++) {
             if(vars.itemId[i] == 0) {
                 vars.itemId.RemoveAt(i);
@@ -517,8 +518,7 @@ update {
 }
 
 start {
-    print(current.sceneName);
-    return !old.sceneName.StartsWith("Level") && current.sceneName.StartsWith("Level_01");
+    return current.sceneName.StartsWith("Level_01") && (old.checkpointIndex == 0 && current.checkpointIndex == -1);
 }
 
 split {
@@ -533,13 +533,11 @@ split {
     }
 
     //Item split
-    if(vars.itemsToSplit.Count > 0) {
-        while(vars.itemsToSplit.Count > 0) {
-            var itemToSplit = vars.itemsToSplit.Dequeue();
-            if(settings.ContainsKey("Inventory_"+itemToSplit) && settings["Inventory_"+itemToSplit]) {
-                vars.itemToSplit.Clear();
-                return true;
-            }
+    while(vars.itemsToSplit.Count > 0) {
+        var itemToSplit = vars.itemsToSplit.Dequeue();
+        if(settings.ContainsKey("Inventory_"+itemToSplit) && settings["Inventory_"+itemToSplit]) {
+            vars.itemsToSplit.Clear();
+            return true;
         }
     }
 
