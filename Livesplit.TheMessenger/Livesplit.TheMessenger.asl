@@ -16,7 +16,7 @@ state ("TheMessenger") {
     int inventorySize    : "mono.dll", 0x002685E0, 0xA0, 0x4C8, 0x8, 0x48, 0x20, 0x30;
     int inventoryCount   : "mono.dll", 0x002685E0, 0xA0, 0x4C8, 0x8, 0x48, 0x20, 0x38;
     //EndingCutscene
-    long endMusic : "mono.dll", 0x00265A20, 0x138, 0x148, 0xC0, 0x0, 0x0, 0x68, 0x60, 0x2B0;
+    long endMusic : "UnityPlayer.dll", 0x01452168, 0x1C8, 0x10, 0x10, 0x50, 0xD0, 0x18, 0x60, 0x2B0;
 }
 
 startup {
@@ -53,7 +53,7 @@ startup {
             
 
     settings.CurrentDefaultParent = "02_AutumnHills";
-        settings.Add("Level_02_AutumnHills", true, "Enter Level");
+        settings.Add("Level_02_AutumnHills", true, "First Enter Level");
         settings.Add("Boss_02_AutumnHills", false, "Leaf Golem Last Hit");
         settings.Add("Cutscene_02_AutumnHills", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_02_AutumnHills";
@@ -61,14 +61,14 @@ startup {
             settings.Add("Cutscene_LeafGolemOutroCutScene", false, "Leaf Golem Outro Fight");
 
     settings.CurrentDefaultParent = "03_ForlornTemple";
-        settings.Add("Level_03_ForlornTemple", true, "Enter Level");
+        settings.Add("Level_03_ForlornTemple", true, "First Enter Level");
         settings.Add("Cutscene_03_ForlornTemple", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_03_ForlornTemple";
             settings.Add("Cutscene_ForlonTempleBossIntroCutscene", false, "Demon King Intro Fight");
             settings.Add("Cutscene_ForlonTempleBossOutroCutscene", false, "Demon King Outro Fight");
 
     settings.CurrentDefaultParent = "04_Catacombs";
-        settings.Add("Level_04_Catacombs", true, "Enter Level");
+        settings.Add("Level_04_Catacombs", true, "First Enter Level");
         settings.Add("Boss_04_Catacombs", false, "Ruxxtin Last Hit");
         settings.Add("Cutscene_04_Catacombs", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_04_Catacombs";
@@ -76,10 +76,10 @@ startup {
             settings.Add("Cutscene_NecromancerOutroCutscene", false, "Ruxxtin Outro Fight");
 
     settings.CurrentDefaultParent = "06_A_BambooCreek";
-        settings.Add("Level_06_A_BambooCreek", true, "Enter Level");
-
+        settings.Add("Level_06_A_BambooCreek", true, "First Enter Level");
+        
     settings.CurrentDefaultParent = "05_A_HowlingGrotto";
-        settings.Add("Level_05_A_HowlingGrotto", true, "Enter Level");
+        settings.Add("Level_05_A_HowlingGrotto", true, "First Enter Level");
         settings.Add("Boss_05_A_HowlingGrotto", false, "Emerald Golem Last Hit");
         settings.Add("Cutscene_05_A_HowlingGrotto", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_05_A_HowlingGrotto";
@@ -87,7 +87,7 @@ startup {
             settings.Add("Cutscene_HowlingGrottoBossOutroCutscene", false, "Emerald Golem Outro Fight");
 
     settings.CurrentDefaultParent = "07_QuillshroomMarsh";
-        settings.Add("Level_07_QuillshroomMarsh", true, "Enter Level");
+        settings.Add("Level_07_QuillshroomMarsh", true, "First Enter Level");
         settings.Add("Boss_07_QuillshroomMarsh", false, "Queen Of Quills Last Hit");
         settings.Add("Cutscene_07_QuillshroomMarsh", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_07_QuillshroomMarsh";
@@ -96,7 +96,7 @@ startup {
             settings.Add("Cutscene_DecurseQueenCutscene", false, "Decurse Queen");
 
     settings.CurrentDefaultParent = "08_SearingCrags";
-        settings.Add("Level_08_SearingCrags", true, "Enter Level");
+        settings.Add("Level_08_SearingCrags", true, "First Enter Level");
         settings.Add("Boss_08_SearingCrags", false, "Colossuses Death");
         settings.Add("Cutscene_08_SearingCrags", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_08_SearingCrags";
@@ -105,13 +105,13 @@ startup {
             settings.Add("Cutscene_SearingCragsGivePowerThistleCutscene", false, "Give Power Thistle");
         
     settings.CurrentDefaultParent = "09_A_GlacialPeak";
-        settings.Add("Level_09_A_GlacialPeak", true, "Enter Level");
+        settings.Add("Level_09_A_GlacialPeak", true, "First Enter Level");
         settings.Add("Cutscene_09_A_GlacialPeak", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_09_A_GlacialPeak";
             settings.Add("Cutscene_CloudRuinsStaffTeleportEntranceCutscene", false, "Glacial Peak to Cloud Ruins (Ruxxtin's staff)");
 
     settings.CurrentDefaultParent = "10_A_TowerOfTime";
-        settings.Add("Level_10_A_TowerOfTime", true, "Enter Level");
+        settings.Add("Level_10_A_TowerOfTime", true, "First Enter Level");
         settings.Add("Boss_10_A_TowerOfTime", false, "Boss Last Hit (Arcane Golem)");
         settings.Add("Cutscene_10_A_TowerOfTime", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_10_A_TowerOfTime";
@@ -119,14 +119,14 @@ startup {
             settings.Add("Cutscene_TowerOfTimeBossOutroCutscene", false, "Arcane Golem Outro Fight");
 
     settings.CurrentDefaultParent = "11_A_CloudRuins";
-        settings.Add("Level_11_A_CloudRuins", true, "Enter Level");
+        settings.Add("Level_11_A_CloudRuins", true, "First Enter Level");
         settings.Add("Boss_11_A_CloudRuins", false, "Manfred Last Hit");
         settings.Add("Cutscene_11_A_CloudRuins", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_11_A_CloudRuins";
             settings.Add("Cutscene_ManfredBossIntroCutscene", false, "Manfred Intro Fight");
 
     settings.CurrentDefaultParent = "12_UnderWorld";
-        settings.Add("Level_12_UnderWorld", true, "Enter Level");
+        settings.Add("Level_12_UnderWorld", true, "First Enter Level");
         settings.Add("Boss_12_UnderWorld", false, "Demon General Last Hit");
         settings.Add("Cutscene_12_UnderWorld", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_12_UnderWorld";
@@ -143,10 +143,10 @@ startup {
             settings.Add("Cutscene_DropMusicNoteCutscene", false, "Drop Music Notes");
 
     settings.CurrentDefaultParent = "04_B_DarkCave";
-        settings.Add("Level_04_B_DarkCave", true, "Enter Level");
+        settings.Add("Level_04_B_DarkCave", true, "First Enter Level");
 
     settings.CurrentDefaultParent = "04_C_RiviereTurquoise";
-        settings.Add("Level_04_C_RiviereTurquoise", true, "Enter Level");
+        settings.Add("Level_04_C_RiviereTurquoise", true, "First Enter Level");
         settings.Add("Boss_04_C_RiviereTurquoise", false, "Butterfly Matriarch Last Hit");
         settings.Add("Cutscene_04_C_RiviereTurquoise", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_04_C_RiviereTurquoise";
@@ -154,7 +154,7 @@ startup {
             settings.Add("Cutscene_RiviereTurquoiseBossIntroCutscene", false, "Butterfly Matriarch Intro");
 
     settings.CurrentDefaultParent = "05_B_SunkenShrine";
-        settings.Add("Level_05_B_SunkenShrine", true, "Enter Level");
+        settings.Add("Level_05_B_SunkenShrine", true, "First Enter Level");
         settings.Add("Cutscene_05_B_SunkenShrine", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_05_B_SunkenShrine";
             settings.Add("Cutscene_SunkenShrinePortalOpeningCutscene", false, "Portal Opening");
@@ -162,7 +162,7 @@ startup {
             settings.Add("Cutscene_SunkenShrineEnterDoorCutscene", false, "Sunken Shrine Dialog");
 
     settings.CurrentDefaultParent = "09_B_ElementalSkylands";
-        settings.Add("Level_09_B_ElementalSkylands", true, "Enter Level");
+        settings.Add("Level_09_B_ElementalSkylands", true, "First Enter Level");
         settings.Add("Boss_09_B_ElementalSkylands", false, "Clockwork Concierge Last Hit");
         settings.Add("Cutscene_09_B_ElementalSkylands", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_09_B_ElementalSkylands";
@@ -170,17 +170,17 @@ startup {
             settings.Add("Cutscene_SkylandsToGlacialPeakFirstTimeCutscene", false, "Skylands to Glacial Peak (Manfred)");
 
     settings.CurrentDefaultParent = "14_CorruptedFuture";
-        settings.Add("Level_14_CorruptedFuture", true, "Enter Level");
+        settings.Add("Level_14_CorruptedFuture", true, "First Enter Level");
 
     settings.CurrentDefaultParent = "11_B_MusicBox";
-        settings.Add("Level_11_B_MusicBox", true, "Enter Level");
+        settings.Add("Level_11_B_MusicBox", true, "First Enter Level");
         settings.Add("Boss_11_B_MusicBox", false, "Phantom Last Hit");
         settings.Add("Cutscene_11_B_MusicBox", false, "Cutscenes");
         settings.CurrentDefaultParent = "Cutscene_11_B_MusicBox";
             settings.Add("Cutscene_PhantomIntroCutscene", false, "Phantom Intro Fight");
 
     settings.CurrentDefaultParent = "Ending";
-        settings.Add("Level_Ending", false, "Enter Level");
+        settings.Add("Level_Ending", false, "First Enter Level");
         settings.Add("Beat_Mask", true, "Beat Mask");
 
     settings.CurrentDefaultParent = "Inventory";
@@ -195,7 +195,7 @@ startup {
         settings.Add("Inventory_7", false, "Climbing claws");
         settings.Add("Inventory_6", false, "Wingsuit");
         settings.Add("Inventory_4", false, "Rope dart");
-        settings.Add("Inventory_3", false, "Scroll upgrade"); // 52
+        settings.Add("Inventory_3", false, "Scroll upgrade (Map)"); // 52
         settings.Add("Inventory_19", false, "Magic Seashell");
         settings.Add("Inventory_25", false, "Get Power Thistle");
         settings.Add("Inventory_25_0", false, "Give Power Thistle");
@@ -355,6 +355,7 @@ startup {
     vars.InitVars = (Action)(() => {
         vars.previousRoomTime = vars.actualRoomTime = "0.00";
         vars.roomTimer = new Stopwatch();
+        vars.timerOldPhase = TimerPhase.NotRunning;
         vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
         vars.visitedLevels = new HashSet<string>();
@@ -390,16 +391,16 @@ startup {
                 vars.gameManagerAddr.Update(proc);
             }
 
-            //Update Room Rect
+            //Update Room Key
             vars.oldRoomKey = vars.currentRoomKey;
             vars.currentRoomKey = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x88)+0x10)+0x14, 32);
 
             //Update times
             if(vars.oldRoomKey != vars.currentRoomKey) {
-                if(vars.currentRoomKey == "") {
+                if(vars.currentRoomKey == null) {
                     vars.roomTimer.Stop(); //Stop during loading
                 } else {
-                    if(vars.oldRoomKey == "") {
+                    if(vars.oldRoomKey == null) {
                         if(vars.lastRoomKey == vars.currentRoomKey) {
                             vars.roomTimer.Start(); //Resume after loading
                         } else {
@@ -450,7 +451,13 @@ init {
 }
 
 update {
-    var inMenu = timer.CurrentPhase == TimerPhase.Running && current.sceneName == "";
+    //Init vars when starting
+    if(vars.timerOldPhase == TimerPhase.NotRunning && timer.CurrentPhase == TimerPhase.Running)
+        vars.InitVars();
+
+    vars.timerOldPhase = timer.CurrentPhase;
+
+    var inMenu = timer.CurrentPhase == TimerPhase.Running  && (!current.sceneName.StartsWith("Level") || !old.sceneName.StartsWith("Level"));
 
     if(settings["RoomTimer"])
         vars.UpdateRoomTimer(game, inMenu);
@@ -510,10 +517,8 @@ update {
 }
 
 start {
-    if(!old.sceneName.StartsWith("Level") && current.sceneName.StartsWith("Level_01")) {
-        vars.InitVars();
-        return true;
-    }
+    print(current.sceneName);
+    return !old.sceneName.StartsWith("Level") && current.sceneName.StartsWith("Level_01");
 }
 
 split {
@@ -528,9 +533,14 @@ split {
     }
 
     //Item split
-    while (vars.itemsToSplit.Count > 0) {
-        var itemToSplit = vars.itemsToSplit.Dequeue();
-        return settings.ContainsKey("Inventory_"+itemToSplit) && settings["Inventory_"+itemToSplit];
+    if(vars.itemsToSplit.Count > 0) {
+        while(vars.itemsToSplit.Count > 0) {
+            var itemToSplit = vars.itemsToSplit.Dequeue();
+            if(settings.ContainsKey("Inventory_"+itemToSplit) && settings["Inventory_"+itemToSplit]) {
+                vars.itemToSplit.Clear();
+                return true;
+            }
+        }
     }
 
     //Power Seal Split
