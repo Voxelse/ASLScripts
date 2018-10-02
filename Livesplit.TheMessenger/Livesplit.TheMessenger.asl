@@ -38,7 +38,7 @@ startup {
         settings.Add("10_A_TowerOfTime", true, "Tower Of Time");
         settings.Add("11_A_CloudRuins", true, "Cloud Ruins");
         settings.Add("12_UnderWorld", true, "UnderWorld");
-        settings.Add("13_TowerOfTimeHQ", false, "Tower Of Time Headquarters");
+        settings.Add("13_TowerOfTimeHQ", false, "Tower Of Time HQ");
         settings.Add("04_B_DarkCave", true, "Dark Cave");
         settings.Add("04_C_RiviereTurquoise", true, "Riviere Turquoise");
         settings.Add("05_B_SunkenShrine", true, "Sunken Shrine");
@@ -56,14 +56,36 @@ startup {
     settings.CurrentDefaultParent = "02_AutumnHills";
         settings.Add("Level_02_AutumnHills", true, "First Enter Level");
         settings.Add("Boss_02_AutumnHills", false, "Leaf Golem Last Hit");
+        settings.Add("Checkpoint_02_AutumnHills", false, "Checkpoints");
         settings.Add("Cutscene_02_AutumnHills", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_02_AutumnHills";
+            settings.Add("Checkpoint_02_AutumnHills_0", false, "Shop 0");
+            settings.Add("Checkpoint_02_AutumnHills_1", false, "Save 1");
+            settings.Add("Checkpoint_02_AutumnHills_2", false, "Shop 2");
+            settings.Add("Checkpoint_02_AutumnHills_3", false, "Save 3");
+            settings.Add("Checkpoint_02_AutumnHills_4", false, "Shop 4");
+            settings.Add("Checkpoint_02_AutumnHills_5", false, "Shop 5");
+            settings.Add("Checkpoint_02_AutumnHills_6", false, "Save 6");
+            settings.Add("Checkpoint_02_AutumnHills_7", false, "Save 7");
+            settings.Add("Checkpoint_02_AutumnHills_8", false, "Save 8");
         settings.CurrentDefaultParent = "Cutscene_02_AutumnHills";
             settings.Add("Cutscene_LeafGolemIntroCutScene", false, "Leaf Golem Intro Fight");
             settings.Add("Cutscene_LeafGolemOutroCutScene", false, "Leaf Golem Outro Fight");
 
     settings.CurrentDefaultParent = "03_ForlornTemple";
         settings.Add("Level_03_ForlornTemple", true, "First Enter Level");
+        settings.Add("Checkpoint_03_ForlornTemple", false, "Checkpoints");
         settings.Add("Cutscene_03_ForlornTemple", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_03_ForlornTemple";
+            settings.Add("Checkpoint_03_ForlornTemple_0", false, "Shop 0");
+            settings.Add("Checkpoint_03_ForlornTemple_1", false, "Shop 1");
+            settings.Add("Checkpoint_03_ForlornTemple_2", false, "Save 2");
+            settings.Add("Checkpoint_03_ForlornTemple_3", false, "Save 3");
+            settings.Add("Checkpoint_03_ForlornTemple_4", false, "Shop 4");
+            settings.Add("Checkpoint_03_ForlornTemple_5", false, "Shop 5");
+            settings.Add("Checkpoint_03_ForlornTemple_6", false, "Shop 6");
+            settings.Add("Checkpoint_03_ForlornTemple_7", false, "Shop 7");
+            settings.Add("Checkpoint_03_ForlornTemple_8", false, "Shop 8");
         settings.CurrentDefaultParent = "Cutscene_03_ForlornTemple";
             settings.Add("Cutscene_ForlonTempleBossIntroCutscene", false, "Demon King Intro Fight");
             settings.Add("Cutscene_ForlonTempleBossOutroCutscene", false, "Demon King Outro Fight");
@@ -71,18 +93,39 @@ startup {
     settings.CurrentDefaultParent = "04_Catacombs";
         settings.Add("Level_04_Catacombs", true, "First Enter Level");
         settings.Add("Boss_04_Catacombs", false, "Ruxxtin Last Hit");
+        settings.Add("Checkpoint_04_Catacombs", false, "Checkpoints");
         settings.Add("Cutscene_04_Catacombs", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_04_Catacombs";
+            settings.Add("Checkpoint_04_Catacombs_0", false, "Shop 0");
+            settings.Add("Checkpoint_04_Catacombs_1", false, "Save 1");
+            settings.Add("Checkpoint_04_Catacombs_2", false, "Save 2");
+            settings.Add("Checkpoint_04_Catacombs_3", false, "Shop 3");
+            settings.Add("Checkpoint_04_Catacombs_4", false, "Save 4");
         settings.CurrentDefaultParent = "Cutscene_04_Catacombs";
             settings.Add("Cutscene_NecromancerIntroCutscene", false, "Ruxxtin Intro Fight");
             settings.Add("Cutscene_NecromancerOutroCutscene", false, "Ruxxtin Outro Fight");
 
     settings.CurrentDefaultParent = "06_A_BambooCreek";
         settings.Add("Level_06_A_BambooCreek", true, "First Enter Level");
-        
+        settings.Add("Checkpoint_06_A_BambooCreek", false, "Checkpoints");
+        settings.CurrentDefaultParent = "Checkpoint_06_A_BambooCreek";
+            settings.Add("Checkpoint_06_A_BambooCreek_0", false, "Shop 0");
+            settings.Add("Checkpoint_06_A_BambooCreek_1", false, "Shop 1");
+            settings.Add("Checkpoint_06_A_BambooCreek_2", false, "Save 2");
+            settings.Add("Checkpoint_06_A_BambooCreek_3", false, "Shop 3");
+            settings.Add("Checkpoint_06_A_BambooCreek_4", false, "Save 4");
+
     settings.CurrentDefaultParent = "05_A_HowlingGrotto";
         settings.Add("Level_05_A_HowlingGrotto", true, "First Enter Level");
         settings.Add("Boss_05_A_HowlingGrotto", false, "Emerald Golem Last Hit");
+        settings.Add("Checkpoint_05_A_HowlingGrotto", false, "Checkpoints");
         settings.Add("Cutscene_05_A_HowlingGrotto", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_05_A_HowlingGrotto";
+            settings.Add("Checkpoint_05_A_HowlingGrotto_0", false, "Shop 0");
+            settings.Add("Checkpoint_05_A_HowlingGrotto_1", false, "Save 1");
+            settings.Add("Checkpoint_05_A_HowlingGrotto_2", false, "Shop 2");
+            settings.Add("Checkpoint_05_A_HowlingGrotto_3", false, "Shop 3");
+            settings.Add("Checkpoint_05_A_HowlingGrotto_4", false, "Save 4");
         settings.CurrentDefaultParent = "Cutscene_05_A_HowlingGrotto";
             settings.Add("Cutscene_HowlingGrottoBossIntroCutscene", false, "Emerald Golem Intro Fight");
             settings.Add("Cutscene_HowlingGrottoBossOutroCutscene", false, "Emerald Golem Outro Fight");
@@ -90,7 +133,15 @@ startup {
     settings.CurrentDefaultParent = "07_QuillshroomMarsh";
         settings.Add("Level_07_QuillshroomMarsh", true, "First Enter Level");
         settings.Add("Boss_07_QuillshroomMarsh", false, "Queen Of Quills Last Hit");
+        settings.Add("Checkpoint_07_QuillshroomMarsh", false, "Checkpoints");
         settings.Add("Cutscene_07_QuillshroomMarsh", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_07_QuillshroomMarsh";
+            settings.Add("Checkpoint_07_QuillshroomMarsh_0", false, "Shop 0");
+            settings.Add("Checkpoint_07_QuillshroomMarsh_1", false, "Save 1");
+            settings.Add("Checkpoint_07_QuillshroomMarsh_2", false, "Shop 2");
+            settings.Add("Checkpoint_07_QuillshroomMarsh_3", false, "Save 3");
+            settings.Add("Checkpoint_07_QuillshroomMarsh_4", false, "Shop 4");
+            settings.Add("Checkpoint_07_QuillshroomMarsh_5", false, "Save 5");
         settings.CurrentDefaultParent = "Cutscene_07_QuillshroomMarsh";
             settings.Add("Cutscene_QuillshroomMarshBossIntroCutscene", false, "Queen Of Quills Intro Fight");
             settings.Add("Cutscene_QuillshroomMarshBossOutroCutscene", false, "Queen Of Quills Outro Fight");
@@ -99,7 +150,17 @@ startup {
     settings.CurrentDefaultParent = "08_SearingCrags";
         settings.Add("Level_08_SearingCrags", true, "First Enter Level");
         settings.Add("Boss_08_SearingCrags", false, "Colossuses Death");
+        settings.Add("Checkpoint_08_SearingCrags", false, "Checkpoints");
         settings.Add("Cutscene_08_SearingCrags", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_08_SearingCrags";
+            settings.Add("Checkpoint_08_SearingCrags_0", false, "Shop 0");
+            settings.Add("Checkpoint_08_SearingCrags_1", false, "Shop 1");
+            settings.Add("Checkpoint_08_SearingCrags_2", false, "Shop 2");
+            settings.Add("Checkpoint_08_SearingCrags_3", false, "Shop 3");
+            settings.Add("Checkpoint_08_SearingCrags_4", false, "Shop 4");
+            settings.Add("Checkpoint_08_SearingCrags_5", false, "Shop 5");
+            settings.Add("Checkpoint_08_SearingCrags_6", false, "Save 6");
+            settings.Add("Checkpoint_08_SearingCrags_7", false, "Save 7");
         settings.CurrentDefaultParent = "Cutscene_08_SearingCrags";
             settings.Add("Cutscene_SearingCragsBossIntroCutscene", false, "Colossuses Intro Fight");
             settings.Add("Cutscene_SearingCragsPortalOpeningCutscene", false, "Portal Opening");
@@ -107,14 +168,32 @@ startup {
         
     settings.CurrentDefaultParent = "09_A_GlacialPeak";
         settings.Add("Level_09_A_GlacialPeak", true, "First Enter Level");
+        settings.Add("Checkpoint_09_A_GlacialPeak", false, "Checkpoints");
         settings.Add("Cutscene_09_A_GlacialPeak", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_09_A_GlacialPeak";
+            settings.Add("Checkpoint_09_A_GlacialPeak_0", false, "Shop 0");
+            settings.Add("Checkpoint_09_A_GlacialPeak_1", false, "Save 1");
+            settings.Add("Checkpoint_09_A_GlacialPeak_2", false, "Shop 2");
+            settings.Add("Checkpoint_09_A_GlacialPeak_3", false, "Save 3");
+            settings.Add("Checkpoint_09_A_GlacialPeak_4", false, "Save 4");
+            settings.Add("Checkpoint_09_A_GlacialPeak_5", false, "Shop 5");
         settings.CurrentDefaultParent = "Cutscene_09_A_GlacialPeak";
             settings.Add("Cutscene_CloudRuinsStaffTeleportEntranceCutscene", false, "Glacial Peak to Cloud Ruins (Ruxxtin's staff)");
 
     settings.CurrentDefaultParent = "10_A_TowerOfTime";
         settings.Add("Level_10_A_TowerOfTime", true, "First Enter Level");
         settings.Add("Boss_10_A_TowerOfTime", false, "Boss Last Hit (Arcane Golem)");
+        settings.Add("Checkpoint_10_A_TowerOfTime", false, "Checkpoints");
         settings.Add("Cutscene_10_A_TowerOfTime", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_10_A_TowerOfTime";
+            settings.Add("Checkpoint_10_A_TowerOfTime_0", false, "Shop 0");
+            settings.Add("Checkpoint_10_A_TowerOfTime_1", false, "Save 1");
+            settings.Add("Checkpoint_10_A_TowerOfTime_2", false, "Save 2");
+            settings.Add("Checkpoint_10_A_TowerOfTime_3", false, "Save 3");
+            settings.Add("Checkpoint_10_A_TowerOfTime_4", false, "Save 4");
+            settings.Add("Checkpoint_10_A_TowerOfTime_5", false, "Save 5");
+            settings.Add("Checkpoint_10_A_TowerOfTime_6", false, "Save 6");
+            settings.Add("Checkpoint_10_A_TowerOfTime_7", false, "Shop 7");
         settings.CurrentDefaultParent = "Cutscene_10_A_TowerOfTime";
             settings.Add("Cutscene_TowerOfTimeBossIntroCutscene", false, "Arcane Golem Intro Fight");
             settings.Add("Cutscene_TowerOfTimeBossOutroCutscene", false, "Arcane Golem Outro Fight");
@@ -122,14 +201,37 @@ startup {
     settings.CurrentDefaultParent = "11_A_CloudRuins";
         settings.Add("Level_11_A_CloudRuins", true, "First Enter Level");
         settings.Add("Boss_11_A_CloudRuins", false, "Manfred Last Hit");
+        settings.Add("Checkpoint_11_A_CloudRuins", false, "Checkpoints");
         settings.Add("Cutscene_11_A_CloudRuins", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_11_A_CloudRuins";
+            settings.Add("Checkpoint_11_A_CloudRuins_0", false, "Shop 0");
+            settings.Add("Checkpoint_11_A_CloudRuins_1", false, "Shop 1");
+            settings.Add("Checkpoint_11_A_CloudRuins_2", false, "Shop 2");
+            settings.Add("Checkpoint_11_A_CloudRuins_3", false, "Shop 3");
+            settings.Add("Checkpoint_11_A_CloudRuins_4", false, "Shop 4");
+            settings.Add("Checkpoint_11_A_CloudRuins_5", false, "Shop 5");
+            settings.Add("Checkpoint_11_A_CloudRuins_6", false, "Shop 6");
+            settings.Add("Checkpoint_11_A_CloudRuins_7", false, "Save 7");
+            settings.Add("Checkpoint_11_A_CloudRuins_8", false, "Save 8");
+            settings.Add("Checkpoint_11_A_CloudRuins_9", false, "Save 9");
+            settings.Add("Checkpoint_11_A_CloudRuins_10", false, "Save 10");
         settings.CurrentDefaultParent = "Cutscene_11_A_CloudRuins";
             settings.Add("Cutscene_ManfredBossIntroCutscene", false, "Manfred Intro Fight");
 
     settings.CurrentDefaultParent = "12_UnderWorld";
         settings.Add("Level_12_UnderWorld", true, "First Enter Level");
         settings.Add("Boss_12_UnderWorld", false, "Demon General Last Hit");
+        settings.Add("Checkpoint_12_UnderWorld", false, "Checkpoints");
         settings.Add("Cutscene_12_UnderWorld", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_12_UnderWorld";
+            settings.Add("Checkpoint_12_UnderWorld_0", false, "Shop 0");
+            settings.Add("Checkpoint_12_UnderWorld_1", false, "Save 1");
+            settings.Add("Checkpoint_12_UnderWorld_2", false, "Shop 2");
+            settings.Add("Checkpoint_12_UnderWorld_3", false, "Shop 3");
+            settings.Add("Checkpoint_12_UnderWorld_4", false, "Save 4");
+            settings.Add("Checkpoint_12_UnderWorld_5", false, "Shop 5");
+            settings.Add("Checkpoint_12_UnderWorld_6", false, "Shop 6");
+            settings.Add("Checkpoint_12_UnderWorld_7", false, "Save 7");
         settings.CurrentDefaultParent = "Cutscene_12_UnderWorld";
             settings.Add("Cutscene_DemonGeneralBossIntroCutscene", false, "Demon General Intro Fight");
             settings.Add("Cutscene_DemonGeneralBossOutroCutscene", false, "Demon General Outro Fight");
@@ -149,14 +251,34 @@ startup {
     settings.CurrentDefaultParent = "04_C_RiviereTurquoise";
         settings.Add("Level_04_C_RiviereTurquoise", true, "First Enter Level");
         settings.Add("Boss_04_C_RiviereTurquoise", false, "Butterfly Matriarch Last Hit");
+        settings.Add("Checkpoint_04_C_RiviereTurquoise", false, "Checkpoints");
         settings.Add("Cutscene_04_C_RiviereTurquoise", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_04_C_RiviereTurquoise";
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_0", false, "Shop 0");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_1", false, "Shop 1");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_2", false, "Shop 2");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_3", false, "Shop 3");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_4", false, "Shop 4");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_5", false, "Save 5");
+            settings.Add("Checkpoint_04_C_RiviereTurquoise_6", false, "Shop 6");
         settings.CurrentDefaultParent = "Cutscene_04_C_RiviereTurquoise";
             settings.Add("Cutscene_RiviereTurquoisePortalOpeningCutscene", false, "Portal Opening");
             settings.Add("Cutscene_RiviereTurquoiseBossIntroCutscene", false, "Butterfly Matriarch Intro");
 
     settings.CurrentDefaultParent = "05_B_SunkenShrine";
         settings.Add("Level_05_B_SunkenShrine", true, "First Enter Level");
+        settings.Add("Checkpoint_05_B_SunkenShrine", false, "Checkpoints");
         settings.Add("Cutscene_05_B_SunkenShrine", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_05_B_SunkenShrine";
+            settings.Add("Checkpoint_05_B_SunkenShrine_0", false, "Shop 0");
+            settings.Add("Checkpoint_05_B_SunkenShrine_1", false, "Shop 1");
+            settings.Add("Checkpoint_05_B_SunkenShrine_2", false, "Shop 2");
+            settings.Add("Checkpoint_05_B_SunkenShrine_3", false, "Save 3");
+            settings.Add("Checkpoint_05_B_SunkenShrine_4", false, "Shop 4");
+            settings.Add("Checkpoint_05_B_SunkenShrine_5", false, "Shop 5");
+            settings.Add("Checkpoint_05_B_SunkenShrine_6", false, "Save 6");
+            settings.Add("Checkpoint_05_B_SunkenShrine_7", false, "Save 7");
+            settings.Add("Checkpoint_05_B_SunkenShrine_8", false, "Save 8");
         settings.CurrentDefaultParent = "Cutscene_05_B_SunkenShrine";
             settings.Add("Cutscene_SunkenShrinePortalOpeningCutscene", false, "Portal Opening");
             settings.Add("Cutscene_DropCrestsCutscene", false, "Drop Crest");
@@ -165,7 +287,18 @@ startup {
     settings.CurrentDefaultParent = "09_B_ElementalSkylands";
         settings.Add("Level_09_B_ElementalSkylands", true, "First Enter Level");
         settings.Add("Boss_09_B_ElementalSkylands", false, "Clockwork Concierge Last Hit");
+        settings.Add("Checkpoint_09_B_ElementalSkylands", false, "Checkpoints");
         settings.Add("Cutscene_09_B_ElementalSkylands", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_09_B_ElementalSkylands";
+            settings.Add("Checkpoint_09_B_ElementalSkylands_0", false, "Shop 0");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_1", false, "Shop 1");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_2", false, "Shop 2");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_3", false, "Shop 3");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_4", false, "Shop 4");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_5", false, "Shop 5");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_6", false, "Shop 6");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_7", false, "Shop 7");
+            settings.Add("Checkpoint_09_B_ElementalSkylands_8", false, "Save 8");
         settings.CurrentDefaultParent = "Cutscene_09_B_ElementalSkylands";
             settings.Add("Cutscene_ElementalSkylandsBossIntroCutscene", false, "Clockwork Concierge Intro Fight");
             settings.Add("Cutscene_SkylandsToGlacialPeakFirstTimeCutscene", false, "Skylands to Glacial Peak (Manfred)");
@@ -176,7 +309,19 @@ startup {
     settings.CurrentDefaultParent = "11_B_MusicBox";
         settings.Add("Level_11_B_MusicBox", true, "First Enter Level");
         settings.Add("Boss_11_B_MusicBox", false, "Phantom Last Hit");
+        settings.Add("Checkpoint_11_B_MusicBox", false, "Checkpoints");
         settings.Add("Cutscene_11_B_MusicBox", false, "Cutscenes");
+        settings.CurrentDefaultParent = "Checkpoint_11_B_MusicBox";
+            settings.Add("Checkpoint_11_B_MusicBox_0", false, "Shop 0");
+            settings.Add("Checkpoint_11_B_MusicBox_1", false, "Shop 1");
+            settings.Add("Checkpoint_11_B_MusicBox_2", false, "Shop 2");
+            settings.Add("Checkpoint_11_B_MusicBox_3", false, "Shop 3");
+            settings.Add("Checkpoint_11_B_MusicBox_4", false, "Shop 4");
+            settings.Add("Checkpoint_11_B_MusicBox_5", false, "Shop 5");
+            settings.Add("Checkpoint_11_B_MusicBox_6", false, "Shop 6");
+            settings.Add("Checkpoint_11_B_MusicBox_7", false, "Shop 7");
+            settings.Add("Checkpoint_11_B_MusicBox_8", false, "Shop 8");
+            settings.Add("Checkpoint_11_B_MusicBox_9", false, "Shop 9");
         settings.CurrentDefaultParent = "Cutscene_11_B_MusicBox";
             settings.Add("Cutscene_PhantomIntroCutscene", false, "Phantom Intro Fight");
 
@@ -368,6 +513,7 @@ startup {
         vars.timeshardOffset = -1;
         vars.oldTimeshardAmount = 0;
         vars.invIdAddr = vars.invNbAddr = IntPtr.Zero;
+        vars.savedCheckpoints = new HashSet<string>();
     });
 
     vars.GetItemId = (Func<Process, int, int>)((proc, offset) => {
@@ -458,13 +604,13 @@ update {
 
     vars.timerOldPhase = timer.CurrentPhase;
 
-    var inMenu = timer.CurrentPhase == TimerPhase.Running  && (!current.sceneName.StartsWith("Level") || !old.sceneName.StartsWith("Level"));
+    var inMenu = !current.sceneName.StartsWith("Level") || !old.sceneName.StartsWith("Level");
 
     if(settings["RoomTimer"])
         vars.UpdateRoomTimer(game, inMenu);
 
-    //Don't update in main menu if running
-    if(inMenu) return false;
+    //Don't update in main menu (notRunning => do start(), running => don't split())
+    if(inMenu) return timer.CurrentPhase == TimerPhase.NotRunning;
     
     //Remove empty id to match new inventory struct
     if(!old.sceneName.StartsWith("Level")) {
@@ -545,6 +691,12 @@ split {
     if(vars.oldChallengeRoomToSplit != vars.currentChallengeRoomToSplit) {
         vars.oldChallengeRoomToSplit = vars.currentChallengeRoomToSplit;
         return settings["Seal_"+vars.currentChallengeRoomToSplit];
+    }
+
+    //Checkpoint Split
+    if(old.checkpointIndex != current.checkpointIndex && vars.savedCheckpoints.Add(current.sceneName+"_"+current.checkpointIndex)) {
+        if(current.checkpointIndex > -1)
+            return settings["Checkpoint_"+current.sceneName.Substring(6, current.sceneName.Length-12)+"_"+current.checkpointIndex];
     }
 
     //Cutscene Split
