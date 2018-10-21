@@ -5,6 +5,8 @@
 state("Fe") {}
 
 startup {
+    refreshRate = 0.5;
+
     settings.Add("perks", true, "Perks");
     settings.SetToolTip("perks", "Split at end tutorial scenes");
     settings.Add("songs", true, "Songs");
@@ -34,31 +36,28 @@ startup {
         "48 C7 00"      // mov qword ptr [rax],00000000
     );
 
+    vars.resetVars = (Action)(() => {
+        vars.initFlag = 0;
+        vars.perkNb = 0;
+        vars.knownVoices = new bool[] {true, false, false, false, false, false};
+        vars.isPlayerSeeker = 0;
+    });
+
     vars.UpdatePointers = (Action<Process>)((proc) => {
         vars.playerAddr = new MemoryWatcher<IntPtr>((IntPtr)vars.playerManagerPtr);
         vars.playerAddr.Update(proc);
         if(vars.playerAddr.Current != IntPtr.Zero) {
             print("[Autosplitter] Found : Struct " + vars.playerAddr.Current.ToString("X"));
 
+            vars.watchers = new MemoryWatcherList() {vars.playerAddr};
             // PlayerCharacter
-            vars.invisible           = new MemoryWatcher<byte> (vars.playerAddr.Current + 0x1CA);
-            vars.scrollVoiceIndex    = new MemoryWatcher<int>  (vars.playerAddr.Current + 0x878);
-            vars.stunned             = new MemoryWatcher<byte> (vars.playerAddr.Current + 0x885);
-            vars.isInPerkTutorial    = new MemoryWatcher<byte> (vars.playerAddr.Current + 0xAA0);
-            vars.isActivingSeekerEye = new MemoryWatcher<byte> (vars.playerAddr.Current + 0xAB3);
-            
+            vars.watchers.Add(new MemoryWatcher<byte>(vars.playerAddr.Current + 0x1CA) {Name = "invisible"});
+            vars.watchers.Add(new MemoryWatcher<int> (vars.playerAddr.Current + 0x878) {Name = "scrollVoiceIndex"});
+            vars.watchers.Add(new MemoryWatcher<byte>(vars.playerAddr.Current + 0x885) {Name = "stunned"});
+            vars.watchers.Add(new MemoryWatcher<byte>(vars.playerAddr.Current + 0xAA0) {Name = "isInPerkTutorial"});
+            vars.watchers.Add(new MemoryWatcher<byte>(vars.playerAddr.Current + 0xAB3) {Name = "isActivingSeekerEye"});
             // SeekerPlayer
-            vars.inControlOfBody     = new MemoryWatcher<byte> (vars.playerAddr.Current + 0x874);
-
-            vars.watchers = new MemoryWatcherList() {
-                vars.playerAddr,
-                vars.invisible,
-                vars.scrollVoiceIndex,
-                vars.stunned,
-                vars.isInPerkTutorial,
-                vars.isActivingSeekerEye,
-                vars.inControlOfBody,
-            };
+            vars.watchers.Add(new MemoryWatcher<byte> (vars.playerAddr.Current + 0x874) {Name = "inControlOfBody"});
         } else print("[Autosplitter] Empty Address");
     });
 }
@@ -70,28 +69,20 @@ init {
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
         ptr = scanner.Scan(vars.scanTargetPlayer);
-        if(ptr != IntPtr.Zero) {
+        if(ptr != IntPtr.Zero)
             break;
-        }
     }
 
     // Waiting the game to create the playerManager instructions
-    if (ptr == IntPtr.Zero) {
-        Thread.Sleep(2000);
-        throw new Exception();
-    }
+    if (ptr == IntPtr.Zero)
+        throw new Exception("[Autosplitter] Can't find signature");
+
+    vars.resetVars();
 
     vars.playerManagerPtr = game.ReadValue<int>(ptr);
     vars.UpdatePointers(game);
 
-    Action resetVars = () => {
-        vars.initFlag = 0;
-        vars.perkNb = 0;
-        vars.knownVoices = new bool[] {true, false, false, false, false, false};
-        vars.isPlayerSeeker = 0;
-    };
-    vars.resetVars = resetVars;
-    vars.resetVars();
+    refreshRate = 60;
 }
 
 update {
@@ -101,12 +92,12 @@ update {
         vars.UpdatePointers(game);
 
     // Save if is in seeker because of entity polymorphism
-    if(vars.isActivingSeekerEye.Current == 1) vars.isPlayerSeeker = 1;
+    if(vars.watchers["isActivingSeekerEye"].Current == 1) vars.isPlayerSeeker = 1;
 }
 
 start {
     //Need to check the second time unstunned because the game unstun/stun at first display and at actual start
-    if(vars.stunned.Changed && vars.stunned.Current == 0) {
+    if(vars.watchers["stunned"].Changed && vars.watchers["stunned"].Current == 0) {
         if(vars.initFlag == 0) {
             vars.initFlag = 1;
         } else {
@@ -119,27 +110,27 @@ start {
 split {
     if(vars.isPlayerSeeker == 0) {
         // Check if we went from a pseudo cinematic
-        if(vars.invisible.Changed && vars.invisible.Current == 0) {
+        if(vars.watchers["invisible"].Changed && vars.watchers["invisible"].Current == 0) {
             
             // Store the number of perks because they are necessarily picked in the right order (could use unlockedPerks from player struct but unnecessarily complex)
-            if (vars.isInPerkTutorial.Current == 1)
+            if (vars.watchers["isInPerkTutorial"].Current == 1)
                 ++vars.perkNb;
 
             // Voice splits : Track if we ended a voice learning by checking if a new voice is acquired/equipped
             // Store known voices because the game only have a complex/not easily accessible struct of voices so it's easier to make a new one ourselves
-            if(!vars.knownVoices[vars.scrollVoiceIndex.Current]) {
-                vars.knownVoices[vars.scrollVoiceIndex.Current] = true;
-                return settings.ContainsKey("song"+vars.scrollVoiceIndex.Current) && settings["song"+vars.scrollVoiceIndex.Current];
+            if(!vars.knownVoices[vars.watchers["scrollVoiceIndex"].Current]) {
+                vars.knownVoices[vars.watchers["scrollVoiceIndex"].Current] = true;
+                return settings.ContainsKey("song"+vars.watchers["scrollVoiceIndex"].Current) && settings["song"+vars.watchers["scrollVoiceIndex"].Current];
             }
         }
 
         // Perk splits : Track if we ended a perk tutorial
-        if(vars.isInPerkTutorial.Changed && vars.isInPerkTutorial.Current == 0)
+        if(vars.watchers["isInPerkTutorial"].Changed && vars.watchers["isInPerkTutorial"].Current == 0)
             return settings["perk"+vars.perkNb];
             
     } else {
         // End split : Track if we loss the control of the seeker
-        if(vars.inControlOfBody.Changed && vars.inControlOfBody.Current == 0)
+        if(vars.watchers["inControlOfBody"].Changed && vars.watchers["inControlOfBody"].Current == 0)
             return true;
     }
 }

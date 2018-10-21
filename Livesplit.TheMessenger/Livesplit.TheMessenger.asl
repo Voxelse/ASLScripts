@@ -1,5 +1,5 @@
 state ("TheMessenger") {
-    //Need to replace nested readPointers to DeepPointers when 64bits pointers will be supported
+    //Need to replace nested readPointers to DeepPointers when 64bits pointers will be supported (e.g vars.UpdatePointers)
 
     //EndingCutscene
     //The structure is only created in the ending level so need to find a better way than static address in case of update/patch
@@ -7,6 +7,8 @@ state ("TheMessenger") {
 }
 
 startup {
+    refreshRate = 0.5;
+
     settings.Add("Levels", true, "Levels");
     settings.Add("Inventory", true, "Inventory");
     settings.Add("RoomTimer", false, "Individual Room Timer");
@@ -649,16 +651,17 @@ init {
         }
         
         instructionsFound = vars.saveSlotUIInstructionPtr != IntPtr.Zero && vars.progressionManagerInstructionPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
-        if(instructionsFound) break;
+        if(instructionsFound)
+            break;
     }
 
     //Waiting for the game to have booted up
-    if (!instructionsFound) {
-        Thread.Sleep(2000);
-        throw new Exception();
-    }
+    if (!instructionsFound)
+        throw new Exception("[Autosplitter] Can't find signature");
 
     vars.InitVars();
+
+    refreshRate = 60;
 }
 
 update {
@@ -758,7 +761,6 @@ split {
 
     //Checkpoint Split
     if(vars.oldCheckpointIndex != vars.currentCheckpointIndex && vars.savedCheckpoints.Add(vars.currentSceneName+"_"+vars.currentCheckpointIndex)) {
-        print("Checkpoint "+vars.currentCheckpointIndex);
         if(vars.currentCheckpointIndex > -1)
             return settings["Checkpoint_"+vars.currentSceneName.Substring(6, vars.currentSceneName.Length-12)+"_"+vars.currentCheckpointIndex];
     }
