@@ -476,23 +476,34 @@ startup {
         settings.Add("Seal_18361868372388", false, "Second");
         settings.Add("Seal_28602892356388", false, "Third");
 
-    //5741574881EC18010000
-    //Used for LevelManager(+831) and InventoryManager(+D9B)
+    //55488BEC565741574881EC18010000
+    //Used for LevelManager         and InventoryManager
+    //         32->0x800  64->0x836  &  32->0xD56  64->0xDA0
     vars.scanSaveSlotUI = new SigScanTarget(0,
+        "55",                // push rbp
+        "48 8B EC",          // mov rbp,rsp
+        "56",                // push rsi
         "57",                // push rdi
         "41 57",             // push r15
         "48 81 EC 18010000"  // sub rsp,00000118
     );
 
-    //48B8????????????????488B00488BC883390048C7403000000000
-    vars.scanProgressionManager = new SigScanTarget(2,
-        "48 B8 ????????????????", // mov rax,????????????????
-        "48 8B 00",               // mov rax,[rax]
-        "48 8B C8",               // mov rcx,rax
-        "83 39 00",               // cmp dword ptr [rcx],00
-        "48 C7 40 30 00000000"    // mov qword ptr [rax+30],00000000
+    //55488BEC564883EC08488BF1488B4668488BC8BA01000000
+    //Used for ProgressionManager
+    //         32->0x70  64->0x6E
+    vars.scanTitleScreen = new SigScanTarget(0,
+        "55",           //push rbp
+        "48 8B EC",     //mov rbp,rsp
+        "56",           //push rsi
+        "48 83 EC 08",  //sub rsp,08
+        "48 8B F1",     //mov rsi,rcx
+        "48 8B 46 68",  //mov rax,[rsi+68]
+        "48 8B C8",     //mov rcx,rax
+        "BA 01000000"   //mov edx,00000001
     );
 
+    //Used for GameManager
+    //         32->0x??  64->0x??
     //48894DF048B8????????????????488B00488BC8833900
     vars.scanGameManager = new SigScanTarget(6,
         "48 89 4D F0",             //mov [rbp-10],rcx
@@ -502,7 +513,7 @@ startup {
         "83 39 00"                 //cmp dword ptr [rcx],00
     );
 
-    vars.InitVars = (Action)(() => {
+    vars.ResetVars = (Action)(() => {
         //Pointers
         vars.oldSceneName = vars.currentSceneName = "";
         vars.oldInventorySize = vars.currentInventorySize = 0;
@@ -511,13 +522,6 @@ startup {
         vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount = 0;
         vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount = 0;
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount = 0;
-
-        //Room Timer
-        vars.roomTimer = new Stopwatch();
-        vars.timerOldPhase = TimerPhase.NotRunning;
-        vars.previousRoomTime = vars.actualRoomTime = "0.00";
-        vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
-        vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
 
         //Splits
         vars.visitedLevels = new HashSet<string>();
@@ -531,35 +535,56 @@ startup {
         vars.itemId = new List<int>();
         vars.itemNb = new List<int>();
         vars.itemsToSplit = new Queue<string>();
+
+        //Room Timer
+        vars.roomTimer = new Stopwatch();
+        vars.timerOldPhase = TimerPhase.NotRunning;
+        vars.previousRoomTime = vars.actualRoomTime = "0.00";
+        vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
+        vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
         //LevelManager
         vars.oldSceneName = vars.currentSceneName;
-        vars.currentSceneName = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.saveSlotUIInstructionPtr+0x831))+0x48)+0x14, 128);
+        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.saveSlotUIInstructionPtr, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
         if(vars.currentSceneName == null) vars.currentSceneName = "";
 
         //InventoryManager
-        IntPtr inventoryManagerPtr = proc.ReadPointer(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.saveSlotUIInstructionPtr+0xD9B))+0x48)+0x20);
-        vars.inventoryIdAddr = proc.ReadPointer(inventoryManagerPtr+0x20);
-        vars.inventoryNbAddr = proc.ReadPointer(inventoryManagerPtr+0x28);
+        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.saveSlotUIInstructionPtr, new int[] {vars.instructionsOffset[1], 0x0, 0x48, 0x20});
+        vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
+        vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
         vars.oldInventorySize = vars.currentInventorySize;
         vars.currentInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
         vars.oldInventoryCount = vars.currentInventoryCount;
         vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
 
         //ProgressionManager
-        IntPtr progressionManagerPtr = proc.ReadPointer(proc.ReadPointer((IntPtr)vars.progressionManagerInstructionPtr));
+        IntPtr progressionManagerPtr = vars.ReadPointers(proc, vars.titleScreenInstructionPtr, new int[] {vars.instructionsOffset[2], 0x0});
         vars.oldCheckpointIndex = vars.currentCheckpointIndex;
-        vars.currentCheckpointIndex = proc.ReadValue<int>(proc.ReadPointer(progressionManagerPtr+0x30)+0x38);
+        vars.currentCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x30)+0x38);
         vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount;
-        vars.currentBossesDefeatedCount = proc.ReadValue<int>(proc.ReadPointer(progressionManagerPtr+0x48)+0x18);
+        vars.currentBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x48)+0x18);
         vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount;
-        vars.currentCutscenesPlayedCount = proc.ReadValue<int>(proc.ReadPointer(progressionManagerPtr+0x58)+0x18);
-        vars.cutscenesPlayedAddr = proc.ReadPointer(proc.ReadPointer(progressionManagerPtr+0x58)+0x10);
+        vars.currentCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x58)+0x18);
+        vars.cutscenesPlayedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x58, 0x10});
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount;
-        vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>(proc.ReadPointer(progressionManagerPtr+0x70)+0x18);
-        vars.challengeRoomsCompletedAddr = proc.ReadPointer(proc.ReadPointer(progressionManagerPtr+0x70)+0x10);
+        vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x70)+0x18);
+        vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x70, 0x10});
+    });
+
+    vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
+        IntPtr ptr = basePtr;
+        proc.ReadPointer((IntPtr)(ptr), !((bool)vars.use32bit), out ptr);
+        return ptr;
+    });
+
+    vars.ReadPointers = (Func<Process, IntPtr, int[], IntPtr>)((proc, basePtr, offsets) => {
+        IntPtr ptr = basePtr;
+        foreach(int offset in offsets) {
+            proc.ReadPointer((IntPtr)(ptr+offset), !((bool)vars.use32bit), out ptr);
+        }
+        return ptr;
     });
 
     vars.GetItemId = (Func<Process, int, int>)((proc, offset) => {
@@ -571,16 +596,30 @@ startup {
     });
 
     vars.ReadString = (Func<Process, IntPtr, int, string>)((proc, baseOffset, count) => {
-        return proc.ReadString(proc.ReadPointer((IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
+        return proc.ReadString((IntPtr)vars.ReadPointer(proc, (IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
     });
 
     vars.UpdateRoomTimer = (Action<Process, bool>)((proc, inMenu) => {
-        if(!inMenu) {
+        if(vars.textSettingCurrent == null || vars.textSettingPrevious == null) {
+            foreach (dynamic component in timer.Layout.Components) {
+                if (component.GetType().Name != "TextComponent") continue;
+                if (component.Settings.Text1 == "Current Room") vars.textSettingCurrent = component.Settings;
+                if (component.Settings.Text1 == "Previous Room") vars.textSettingPrevious = component.Settings;
+            }
+
+            if(vars.textSettingCurrent == null)
+                vars.textSettingCurrent = vars.CreateTextComponent("Current Room");
+
+            if(vars.textSettingPrevious == null)
+                vars.textSettingPrevious = vars.CreateTextComponent("Previous Room");
+        }
+
+        if(!inMenu && timer.CurrentPhase == TimerPhase.Running) {
             vars.gameManagerAddr.Update(proc);
 
             //Update GameManager Pointer
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)vars.gameManagerInstructionPtr));
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerInstructionPtr+vars.instructionsOffset[3])));
                 vars.gameManagerAddr.Update(proc);
             }
 
@@ -607,8 +646,20 @@ startup {
                     vars.lastRoomKey = vars.currentRoomKey;
                 }
             }
+            vars.actualRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
         }
-        vars.actualRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+
+        //Updating Text Components
+        vars.textSettingCurrent.Text2 = timer.CurrentPhase == TimerPhase.Running ? vars.actualRoomTime : "0.00";
+        vars.textSettingPrevious.Text2 = timer.CurrentPhase == TimerPhase.Running ? vars.previousRoomTime : "0.00";
+    });
+
+    vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
+        var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
+        dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
+        timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
+        textComponent.Settings.Text1 = name;
+        return textComponent.Settings;
     });
 
     vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
@@ -620,11 +671,10 @@ startup {
 }
 
 init {
-    vars.saveSlotUIInstructionPtr = IntPtr.Zero;
-    vars.progressionManagerInstructionPtr = IntPtr.Zero;
-    vars.gameManagerInstructionPtr = IntPtr.Zero;
-
     bool instructionsFound = false;
+    vars.saveSlotUIInstructionPtr = IntPtr.Zero;
+    vars.titleScreenInstructionPtr = IntPtr.Zero;
+    vars.gameManagerInstructionPtr = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
@@ -636,21 +686,19 @@ init {
                 print("[Autosplitter] SaveSlotUI Found : " + vars.saveSlotUIInstructionPtr.ToString("X"));
         }
 
-        if(vars.progressionManagerInstructionPtr == IntPtr.Zero) {
-            vars.progressionManagerInstructionPtr = scanner.Scan(vars.scanProgressionManager);
-            if(vars.progressionManagerInstructionPtr != IntPtr.Zero)
-                print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerInstructionPtr.ToString("X"));
+        if(vars.titleScreenInstructionPtr == IntPtr.Zero) {
+            vars.titleScreenInstructionPtr = scanner.Scan(vars.scanTitleScreen);
+            if(vars.titleScreenInstructionPtr != IntPtr.Zero)
+                print("[Autosplitter] TitleScreen Found : " + vars.titleScreenInstructionPtr.ToString("X"));
         }
 
-        if(settings["RoomTimer"]) {
-            if(vars.gameManagerInstructionPtr == IntPtr.Zero) {
-                vars.gameManagerInstructionPtr = scanner.Scan(vars.scanGameManager);
-                if(vars.gameManagerInstructionPtr != IntPtr.Zero)
-                    print("[Autosplitter] GameManager Found : " + vars.gameManagerInstructionPtr.ToString("X"));
-            }
+        if(settings["RoomTimer"] && vars.gameManagerInstructionPtr == IntPtr.Zero) {
+            vars.gameManagerInstructionPtr = scanner.Scan(vars.scanGameManager);
+            if(vars.gameManagerInstructionPtr != IntPtr.Zero)
+                print("[Autosplitter] GameManager Found : " + vars.gameManagerInstructionPtr.ToString("X"));
         }
-        
-        instructionsFound = vars.saveSlotUIInstructionPtr != IntPtr.Zero && vars.progressionManagerInstructionPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
+
+        instructionsFound = vars.saveSlotUIInstructionPtr != IntPtr.Zero && vars.titleScreenInstructionPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -659,26 +707,32 @@ init {
     if (!instructionsFound)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.InitVars();
+    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.saveSlotUIInstructionPtr+0x57) == 0x7E ? false : true;
+    print("[Autosplitter] Use 32 bit integer : "+vars.use32bit);
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x800, 0xD56, 0x70, 0x00} : new int[] {0x836, 0xDA0, 0x6E, 0x00};
+
+    vars.textSettingCurrent = vars.textSettingPrevious = null;
+
+    vars.ResetVars();
 
     refreshRate = 60;
 }
 
 update {
-    vars.UpdatePointers(game);
-
-    //Init vars when starting
+    //Reset vars when starting
     if(vars.timerOldPhase == TimerPhase.NotRunning && timer.CurrentPhase == TimerPhase.Running)
-        vars.InitVars();
+        vars.ResetVars();
 
     vars.timerOldPhase = timer.CurrentPhase;
+
+    vars.UpdatePointers(game);
 
     bool inMenu = vars.currentSceneName.Length < 8 || vars.oldSceneName.Length < 8;
 
     if(settings["RoomTimer"])
         vars.UpdateRoomTimer(game, inMenu);
 
-    //Don't update in main menu (notRunning => do start(), running => don't split())
+    //Don't update in main menu (inMenu and : notRunning => do start() / running => don't split())
     if(inMenu) return timer.CurrentPhase == TimerPhase.NotRunning;
     
     //Remove empty id to match new inventory struct
