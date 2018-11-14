@@ -27,3 +27,7 @@ Edit the two components by giving them a name (or not) and check the 'Variables'
 In the droplist choose 'actualRoomTime' for one of the component and 'previousRoomTime' for the other one.
 
 WARNINIG : If you use the room timer you'll need to load at least a save since the launch of the game window otherwise the autosplitter will not work.
+
+
+# Trainer
+The trainer needs to be opened after the game and closed before the game.
