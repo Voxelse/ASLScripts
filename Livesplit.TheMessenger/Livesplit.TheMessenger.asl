@@ -1,9 +1,5 @@
 state ("TheMessenger") {
-    //Need to replace nested readPointers to DeepPointers when 64bits pointers will be supported (e.g vars.UpdatePointers)
-
-    //EndingCutscene
-    //The structure is only created in the ending level so need to find a better way than static address in case of update/patch
-    //long endMusic : "UnityPlayer.dll", 0x01452168, 0x1C8, 0x10, 0x10, 0x50, 0xD0, 0x18, 0x60, 0x2B0;
+    //Need to replace custom ReadPointers to DeepPointers when 64bits pointers will be supported (e.g vars.UpdatePointers)
 }
 
 startup {
@@ -314,7 +310,7 @@ startup {
 
     settings.CurrentDefaultParent = "Ending";
         settings.Add("Level_Ending", false, "First Enter Level");
-        // settings.Add("Beat_Mask", true, "Beat Mask");
+        settings.Add("Boss_Ending", true, "Beat Mask");
 
     settings.CurrentDefaultParent = "Inventory";
         settings.Add("Items", false);
@@ -476,42 +472,13 @@ startup {
         settings.Add("Seal_18361868372388", false, "Second");
         settings.Add("Seal_28602892356388", false, "Third");
 
-    //55488BEC565741574881EC18010000
-    //Used for LevelManager         and InventoryManager
-    //         32->0x800  64->0x836  &  32->0xD56  64->0xDA0
-    vars.scanSaveSlotUI = new SigScanTarget(0,
-        "55",                // push rbp
-        "48 8B EC",          // mov rbp,rsp
-        "56",                // push rsi
-        "57",                // push rdi
-        "41 57",             // push r15
-        "48 81 EC 18010000"  // sub rsp,00000118
-    );
+    vars.scanLevelManager = new SigScanTarget(0, "55 48 8B EC 48 83 EC 40 48 89 4D C8 48 B8");
 
-    //55488BEC564883EC08488BF1488B4668488BC8BA01000000
-    //Used for ProgressionManager
-    //         32->0x70  64->0x6E
-    vars.scanTitleScreen = new SigScanTarget(0,
-        "55",           //push rbp
-        "48 8B EC",     //mov rbp,rsp
-        "56",           //push rsi
-        "48 83 EC 08",  //sub rsp,08
-        "48 8B F1",     //mov rsi,rcx
-        "48 8B 46 68",  //mov rax,[rsi+68]
-        "48 8B C8",     //mov rcx,rax
-        "BA 01000000"   //mov edx,00000001
-    );
+    vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
 
-    //Used for GameManager
-    //         32->0x??  64->0x??
-    //48894DF048B8????????????????488B00488BC8833900
-    vars.scanGameManager = new SigScanTarget(6,
-        "48 89 4D F0",             //mov [rbp-10],rcx
-        "48 B8 ????????????????",  //mov rax,????????????????
-        "48 8B 00",                //mov rax,[rax]
-        "48 8B C8",                //mov rcx,rax
-        "83 39 00"                 //cmp dword ptr [rcx],00
-    );
+    vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 57 41 56 41 57 48 83 EC 10 48 8B F9 48 8B F2 83 3E 00 48 8B 46 50 48 63 57 28");
+
+    vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
     vars.ResetVars = (Action)(() => {
         //Pointers
@@ -538,29 +505,21 @@ startup {
 
         //Room Timer
         vars.roomTimer = new Stopwatch();
-        vars.timerOldPhase = TimerPhase.NotRunning;
         vars.previousRoomTime = vars.actualRoomTime = "0.00";
         vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
+        
+        vars.timerOldPhase = TimerPhase.NotRunning;
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
         //LevelManager
         vars.oldSceneName = vars.currentSceneName;
-        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.saveSlotUIInstructionPtr, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
+        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerPtr, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
         if(vars.currentSceneName == null) vars.currentSceneName = "";
 
-        //InventoryManager
-        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.saveSlotUIInstructionPtr, new int[] {vars.instructionsOffset[1], 0x0, 0x48, 0x20});
-        vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
-        vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
-        vars.oldInventorySize = vars.currentInventorySize;
-        vars.currentInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
-        vars.oldInventoryCount = vars.currentInventoryCount;
-        vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
-
         //ProgressionManager
-        IntPtr progressionManagerPtr = vars.ReadPointers(proc, vars.titleScreenInstructionPtr, new int[] {vars.instructionsOffset[2], 0x0});
+        IntPtr progressionManagerPtr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {vars.instructionsOffset[1], 0x0});
         vars.oldCheckpointIndex = vars.currentCheckpointIndex;
         vars.currentCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x30)+0x38);
         vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount;
@@ -571,6 +530,15 @@ startup {
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount;
         vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x70)+0x18);
         vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x70, 0x10});
+        
+        //InventoryManager
+        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerPtr, new int[] {vars.instructionsOffset[2], 0x0, 0x48, 0x20});
+        vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
+        vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
+        vars.oldInventorySize = vars.currentInventorySize;
+        vars.currentInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
+        vars.oldInventoryCount = vars.currentInventoryCount;
+        vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
     });
 
     vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
@@ -619,7 +587,7 @@ startup {
 
             //Update GameManager Pointer
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerInstructionPtr+vars.instructionsOffset[3])));
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerPtr+vars.instructionsOffset[3])));
                 vars.gameManagerAddr.Update(proc);
             }
 
@@ -672,33 +640,36 @@ startup {
 
 init {
     bool instructionsFound = false;
-    vars.saveSlotUIInstructionPtr = IntPtr.Zero;
-    vars.titleScreenInstructionPtr = IntPtr.Zero;
-    vars.gameManagerInstructionPtr = IntPtr.Zero;
+    vars.levelManagerPtr = IntPtr.Zero;
+    vars.progressionManagerPtr = IntPtr.Zero;
+    vars.inventoryManagerPtr = IntPtr.Zero;
+    vars.gameManagerPtr = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(vars.saveSlotUIInstructionPtr == IntPtr.Zero) {
-            vars.saveSlotUIInstructionPtr = scanner.Scan(vars.scanSaveSlotUI);
-            if(vars.saveSlotUIInstructionPtr != IntPtr.Zero)
-                print("[Autosplitter] SaveSlotUI Found : " + vars.saveSlotUIInstructionPtr.ToString("X"));
+        if(vars.levelManagerPtr == IntPtr.Zero) {
+            vars.levelManagerPtr = scanner.Scan(vars.scanLevelManager);
+            if(vars.levelManagerPtr != IntPtr.Zero) print("[Autosplitter] LevelManager Found : " + vars.levelManagerPtr.ToString("X"));
         }
 
-        if(vars.titleScreenInstructionPtr == IntPtr.Zero) {
-            vars.titleScreenInstructionPtr = scanner.Scan(vars.scanTitleScreen);
-            if(vars.titleScreenInstructionPtr != IntPtr.Zero)
-                print("[Autosplitter] TitleScreen Found : " + vars.titleScreenInstructionPtr.ToString("X"));
+        if(vars.progressionManagerPtr == IntPtr.Zero) {
+            vars.progressionManagerPtr = scanner.Scan(vars.scanProgressionManager);
+            if(vars.progressionManagerPtr != IntPtr.Zero) print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerPtr.ToString("X"));
         }
 
-        if(settings["RoomTimer"] && vars.gameManagerInstructionPtr == IntPtr.Zero) {
-            vars.gameManagerInstructionPtr = scanner.Scan(vars.scanGameManager);
-            if(vars.gameManagerInstructionPtr != IntPtr.Zero)
-                print("[Autosplitter] GameManager Found : " + vars.gameManagerInstructionPtr.ToString("X"));
+        if(vars.inventoryManagerPtr == IntPtr.Zero) {
+            vars.inventoryManagerPtr = scanner.Scan(vars.scanInventoryManager);
+            if(vars.inventoryManagerPtr != IntPtr.Zero) print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerPtr.ToString("X"));
         }
 
-        instructionsFound = vars.saveSlotUIInstructionPtr != IntPtr.Zero && vars.titleScreenInstructionPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
+        if(settings["RoomTimer"] && vars.gameManagerPtr == IntPtr.Zero) {
+            vars.gameManagerPtr = scanner.Scan(vars.scanGameManager);
+            if(vars.gameManagerPtr != IntPtr.Zero) print("[Autosplitter] GameManager Found : " + vars.gameManagerPtr.ToString("X"));
+        }
+
+        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -707,9 +678,9 @@ init {
     if (!instructionsFound)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.saveSlotUIInstructionPtr+0x57) == 0x7E ? false : true;
+    vars.use32bit = false;//game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x57) == 0x7E ? false : true;
     print("[Autosplitter] Use 32 bit integer : "+vars.use32bit);
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x800, 0xD56, 0x70, 0x00} : new int[] {0x836, 0xDA0, 0x6E, 0x00};
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x800, 0xD56, 0x70, 0x00} : new int[] {0x14C, 0x6E, 0xA6, 0x00};
 
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
@@ -824,9 +795,4 @@ split {
         vars.oldCutsceneToSplit = vars.currentCutsceneToSplit;
         return settings.ContainsKey("Cutscene_"+vars.currentCutsceneToSplit) && settings["Cutscene_"+vars.currentCutsceneToSplit];
     }
-
-    //End split
-    // if(vars.currentSceneName == "Level_Ending_Build" && old.endMusic != 0 && current.endMusic == 0) {
-    //     return settings["Beat_Mask"];
-    // }
 }
