@@ -12,6 +12,7 @@ Autosplitter for the game The Messenger
   * Splits :
     * Start a level
     * Beat a boss
+    * Save at a checkpoint
     * Obtain an item (items, upgrades, phobekins, music notes)
     * End a cutscene
     * Break a Power Seal
@@ -22,3 +23,9 @@ If you use the room timer you'll need to load at least a save since the launch o
 
 # Trainer
 The trainer needs to be opened after the game and closed before the game.
+
+**Pull** buttons take the informations from the game to the trainer.<br/>
+**Push** buttons put the informations from the trainer to the game.<br/>
+
+For checkpoint modifications you have to **push** the new informations of the checkpoint and then go to title and reload the save (or die if the new checkpoint is in the same level).<br/>
+For inventory modifications you have to **push** the items you want (don't exceed the number of **item free** or the game will crash) then save and reload for it to take effect.
