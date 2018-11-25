@@ -711,7 +711,7 @@ update {
     //Timeshard amount update
     if(vars.timeshardOffset != -1) {
         vars.oldTimeshardAmount = vars.itemNb[vars.timeshardOffset];
-        vars.itemNb[vars.timeshardOffset] = vars.GetItemNb(game, vars.timeshardOffset);
+        vars.itemNb[vars.timeshardOffset] = game.ReadValue<int>((IntPtr)(vars.inventoryNbAddr+0x20+0x4*vars.timeshardOffset));
     }
 
     //Inventory update
