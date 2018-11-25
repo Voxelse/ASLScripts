@@ -324,7 +324,7 @@ startup {
         settings.Add("Inventory_7", false, "Climbing claws");
         settings.Add("Inventory_6", false, "Wingsuit");
         settings.Add("Inventory_4", false, "Rope dart");
-        settings.Add("Inventory_3", false, "Scroll upgrade (Map)"); // 52
+        settings.Add("Inventory_3", false, "Scroll upgrade (Map)"); // 52 time travel
         settings.Add("Inventory_19", false, "Magic Seashell");
         settings.Add("Inventory_25", false, "Get Power Thistle");
         settings.Add("Inventory_25_0", false, "Give Power Thistle");
@@ -336,7 +336,7 @@ startup {
         settings.Add("Inventory_29", false, "Candle");
         settings.Add("Inventory_60", false, "Magic Firefly");
         settings.Add("Inventory_40", false, "Lightfoot Tabi");
-        settings.Add("Inventory_58", false, "Sun Crest");
+        settings.Add("Inventory_58", false, "Sun Crest"); //74 both
         settings.Add("Inventory_59", false, "Moon Crest");
         settings.Add("Inventory_51", false, "Demon King's Crown");
 
@@ -375,7 +375,7 @@ startup {
         settings.Add("Inventory_16", true, "Key of Symbiosis");
 
     settings.CurrentDefaultParent = "Phobekins";
-        settings.Add("Inventory_20", false, "Necro");
+        settings.Add("Inventory_20", false, "Necro"); // 75 all
         settings.Add("Inventory_21", false, "Acro");
         settings.Add("Inventory_22", false, "Cloustro");
         settings.Add("Inventory_23", false, "Pyro");
@@ -555,14 +555,6 @@ startup {
         return ptr;
     });
 
-    vars.GetItemId = (Func<Process, int, int>)((proc, offset) => {
-        return proc.ReadValue<int>((IntPtr)(vars.inventoryIdAddr+0x20+0x4*offset));
-    });
-
-    vars.GetItemNb = (Func<Process, int, int>)((proc, offset) => {
-        return proc.ReadValue<int>((IntPtr)(vars.inventoryNbAddr+0x20+0x4*offset));
-    });
-
     vars.ReadString = (Func<Process, IntPtr, int, string>)((proc, baseOffset, count) => {
         return proc.ReadString((IntPtr)vars.ReadPointer(proc, (IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
     });
@@ -669,7 +661,7 @@ init {
             if(vars.gameManagerPtr != IntPtr.Zero) print("[Autosplitter] GameManager Found : " + vars.gameManagerPtr.ToString("X"));
         }
 
-        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerInstructionPtr != IntPtr.Zero : true);
+        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerPtr != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -724,20 +716,24 @@ update {
 
     //Inventory update
     if((vars.oldInventoryCount != vars.currentInventoryCount) || (vars.oldInventorySize != vars.currentInventorySize) || (vars.timeshardOffset != -1 && vars.oldTimeshardAmount > vars.itemNb[vars.timeshardOffset])) {
+        bool firstAdd = vars.itemId.Count == 0;
         for(int offset = 0; offset < vars.currentInventorySize; offset++) {
+            var id = game.ReadValue<int>((IntPtr)(vars.inventoryIdAddr+0x20+0x4*offset));
+            var nb = game.ReadValue<int>((IntPtr)(vars.inventoryNbAddr+0x20+0x4*offset));
+
             if(vars.itemId.Count-1 < offset) { //Add Item
-                vars.itemId.Add(vars.GetItemId(game, offset));
-                vars.itemNb.Add(vars.GetItemNb(game, offset));
-                if(vars.itemId[offset] == 0) vars.timeshardOffset = offset;
-                vars.itemsToSplit.Enqueue(vars.itemId[offset].ToString());
-            } else if(vars.itemNb[offset] != vars.GetItemNb(game, offset)) { //Update Item
-                vars.itemNb[offset] = vars.GetItemNb(game, offset);
+                vars.itemId.Add(id);
+                vars.itemNb.Add(nb);
+                if(id == 0) vars.timeshardOffset = offset;
+                if(!firstAdd) vars.itemsToSplit.Enqueue(vars.itemId[offset].ToString());
+            } else if(vars.itemNb[offset] != nb) { //Update Item
+                vars.itemNb[offset] = nb;
                 if(vars.itemId[offset] == 0) { //New Item
-                    vars.itemId[offset] = vars.GetItemId(game, offset);
+                    vars.itemId[offset] = id;
                     vars.itemsToSplit.Enqueue(vars.itemId[offset].ToString());
                 } else { //Remove/Update Item
                     vars.itemsToSplit.Enqueue(vars.itemId[offset]+"_"+vars.itemNb[offset]);
-                    vars.itemId[offset] = vars.GetItemId(game, offset);
+                    vars.itemId[offset] = id;
                 }
             } 
         }
