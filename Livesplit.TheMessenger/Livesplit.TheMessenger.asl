@@ -585,7 +585,7 @@ startup {
 
             //Update Room Key
             vars.oldRoomKey = vars.currentRoomKey;
-            vars.currentRoomKey = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x88)+0x10)+0x14, 32);
+            vars.currentRoomKey = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x98)+0x10)+0x14, 32);
 
             //Update times
             if(vars.oldRoomKey != vars.currentRoomKey) {
