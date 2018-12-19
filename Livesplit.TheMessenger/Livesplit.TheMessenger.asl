@@ -432,7 +432,7 @@ startup {
 
     settings.CurrentDefaultParent = "Seal_08_SearingCrags";
         settings.Add("Seal_761085268", false, "First");
-        settings.Add("Seal_300332180196", false, "Second");
+        settings.Add("Seal_300332196212", false, "Second");
         settings.Add("Seal_364396292308", false, "Third");
 
     settings.CurrentDefaultParent = "Seal_09_A_GlacialPeak";
