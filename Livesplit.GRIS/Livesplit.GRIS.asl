@@ -129,6 +129,8 @@ init {
 	});
 	timer.OnStart += vars.timerResetVars;
 
+	vars.initPower = 0;
+
 	refreshRate = 60;
 }
 
@@ -161,9 +163,13 @@ update {
 
 		//Power
 		vars.nextPower = game.ReadValue<byte>((IntPtr)(vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x20, 0x28})+0x20+0x1*vars.curPower));
-		vars.oldPower = vars.curPower;
-		if(vars.nextPower == 1) {
-			vars.curPower++;
+		if(vars.initPower == 1) {
+			vars.oldPower = vars.curPower;
+			if(vars.nextPower == 1) {
+				vars.curPower++;
+			}			
+		} else if(vars.nextPower == 0) {
+			vars.initPower = 1;
 		}
 
 		//Color
