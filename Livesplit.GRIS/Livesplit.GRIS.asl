@@ -111,6 +111,7 @@ init {
 
 	vars.oldColor = vars.curColor = 0;
 	vars.oldPower = vars.curPower = 0;
+	vars.initPower = 0;
 	vars.oldConstellation = vars.curConstellation = 0;
 
 	vars.mementoList = new List<byte>();
@@ -119,6 +120,7 @@ init {
 	vars.timerResetVars = (EventHandler)((s, e) => {
 		vars.oldColor = vars.curColor = 0;
 		vars.oldPower = vars.curPower = 0;
+		vars.initPower = 0;
 		vars.oldConstellation = vars.curConstellation = 0;
 		vars.curMemento = vars.oldMemento = -1;
 
@@ -128,8 +130,6 @@ init {
 		}
 	});
 	timer.OnStart += vars.timerResetVars;
-
-	vars.initPower = 0;
 
 	refreshRate = 60;
 }
