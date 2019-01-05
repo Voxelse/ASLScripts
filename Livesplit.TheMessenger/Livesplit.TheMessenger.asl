@@ -472,13 +472,15 @@ startup {
         settings.Add("Seal_18361868372388", false, "Second");
         settings.Add("Seal_28602892356388", false, "Third");
 
-    vars.scanLevelManager = new SigScanTarget(0, "55 48 8B EC 48 83 EC 40 48 89 4D C8 48 B8");
+    vars.scanLevelManager = new SigScanTarget(0, "0F B6 00 85 C0 0F 85 ?? 00 00 00 48 8D 4D 30 48 83 EC 20");
 
     vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
 
     vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 57 41 56 41 57 48 83 EC 10 48 8B F9 48 8B F2 83 3E 00 48 8B 46 50 48 63 57 28");
 
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
+
+    vars.scanUIManager = new SigScanTarget(15, "55 48 8B EC 56 57 48 83 EC 10 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 08");
 
     vars.ResetVars = (Action)(() => {
         //Pointers
@@ -510,6 +512,8 @@ startup {
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
         
         vars.timerOldPhase = TimerPhase.NotRunning;
+
+        vars.quarbleInDone  = vars.quarble = IntPtr.Zero;
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
@@ -539,6 +543,10 @@ startup {
         vars.currentInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
         vars.oldInventoryCount = vars.currentInventoryCount;
         vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
+
+        //Quarble View
+        vars.quarble = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {0x0, 0x0, 0x80, 0x28, 0x50, 0x10, 0x20});
+        vars.quarbleInDone = vars.ReadPointer(proc, vars.quarble+0x20);
     });
 
     vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
@@ -636,6 +644,7 @@ init {
     vars.progressionManagerPtr = IntPtr.Zero;
     vars.inventoryManagerPtr = IntPtr.Zero;
     vars.gameManagerPtr = IntPtr.Zero;
+    vars.UIManagerPtr = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
@@ -656,12 +665,17 @@ init {
             if(vars.inventoryManagerPtr != IntPtr.Zero) print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerPtr.ToString("X"));
         }
 
+        if(vars.UIManagerPtr == IntPtr.Zero) {
+            vars.UIManagerPtr = scanner.Scan(vars.scanUIManager);
+            if(vars.UIManagerPtr != IntPtr.Zero) print("[Autosplitter] UIManager Found : " + vars.UIManagerPtr.ToString("X"));
+        }
+
         if(settings["RoomTimer"] && vars.gameManagerPtr == IntPtr.Zero) {
             vars.gameManagerPtr = scanner.Scan(vars.scanGameManager);
             if(vars.gameManagerPtr != IntPtr.Zero) print("[Autosplitter] GameManager Found : " + vars.gameManagerPtr.ToString("X"));
         }
 
-        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerPtr != IntPtr.Zero : true);
+        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && vars.UIManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerPtr != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -670,10 +684,8 @@ init {
     if (!instructionsFound)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.use32bit = false;//game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x57) == 0x7E ? false : true;
-    print("[Autosplitter] Use 32 bit integer : "+vars.use32bit);
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x800, 0xD56, 0x70, 0x00} : new int[] {0x14C, 0x6E, 0xA6, 0x00};
-
+    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x7) == 0x53;
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xA8, 0x00} : new int[] {0x136, 0x6E, 0xA6, 0x00};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
     vars.ResetVars();
@@ -791,4 +803,8 @@ split {
         vars.oldCutsceneToSplit = vars.currentCutsceneToSplit;
         return settings.ContainsKey("Cutscene_"+vars.currentCutsceneToSplit) && settings["Cutscene_"+vars.currentCutsceneToSplit];
     }
+}
+
+isLoading {
+    return vars.quarble != IntPtr.Zero && vars.quarbleInDone == IntPtr.Zero;
 }
