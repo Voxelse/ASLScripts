@@ -6,7 +6,7 @@ startup {
     refreshRate = 0.5;
 
     settings.Add("Levels", true, "Levels");
-    settings.Add("Inventory", true, "Inventory");
+    settings.Add("Inventory", false, "Inventory");
     settings.Add("RoomTimer", false, "Individual Room Timer");
 
     settings.CurrentDefaultParent = "Levels";
@@ -165,7 +165,7 @@ startup {
 
     settings.CurrentDefaultParent = "10_A_TowerOfTime";
         settings.Add("Level_10_A_TowerOfTime", true, "First Enter Level");
-        settings.Add("Boss_10_A_TowerOfTime", false, "Boss Last Hit (Arcane Golem)");
+        settings.Add("Boss_10_A_TowerOfTime", true, "Boss Last Hit (Arcane Golem)");
         settings.Add("Checkpoint_10_A_TowerOfTime", false, "Checkpoints");
         settings.Add("Cutscene_10_A_TowerOfTime", false, "Cutscenes");
         settings.CurrentDefaultParent = "Checkpoint_10_A_TowerOfTime";
@@ -203,7 +203,7 @@ startup {
 
     settings.CurrentDefaultParent = "12_UnderWorld";
         settings.Add("Level_12_UnderWorld", true, "First Enter Level");
-        settings.Add("Boss_12_UnderWorld", false, "Demon General Last Hit");
+        settings.Add("Boss_12_UnderWorld", true, "Demon General Last Hit");
         settings.Add("Checkpoint_12_UnderWorld", false, "Checkpoints");
         settings.Add("Cutscene_12_UnderWorld", false, "Cutscenes");
         settings.CurrentDefaultParent = "Checkpoint_12_UnderWorld";
@@ -315,7 +315,7 @@ startup {
     settings.CurrentDefaultParent = "Inventory";
         settings.Add("Items", false);
         settings.Add("Abilities", false);
-        settings.Add("Music Notes", true);
+        settings.Add("Music Notes", false);
         settings.Add("Phobekins", false);
         settings.Add("Power Seals", false);
     
@@ -367,12 +367,12 @@ startup {
         settings.Add("Inventory_70", false, "Focused power sense");
 
     settings.CurrentDefaultParent = "Music Notes";
-        settings.Add("Inventory_11", true, "Key of Courage");
-        settings.Add("Inventory_12", true, "Key of Hope");
-        settings.Add("Inventory_13", true, "Key of Love");
-        settings.Add("Inventory_14", true, "Key of Strength");
-        settings.Add("Inventory_15", true, "Key of Chaos");
-        settings.Add("Inventory_16", true, "Key of Symbiosis");
+        settings.Add("Inventory_11", false, "Key of Courage");
+        settings.Add("Inventory_12", false, "Key of Hope");
+        settings.Add("Inventory_13", false, "Key of Love");
+        settings.Add("Inventory_14", false, "Key of Strength");
+        settings.Add("Inventory_15", false, "Key of Chaos");
+        settings.Add("Inventory_16", false, "Key of Symbiosis");
 
     settings.CurrentDefaultParent = "Phobekins";
         settings.Add("Inventory_20", false, "Necro"); // 75 all
@@ -480,7 +480,7 @@ startup {
 
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
-    vars.scanUIManager = new SigScanTarget(15, "55 48 8B EC 56 57 48 83 EC 10 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 08");
+    vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ???????? F3 0F 5A C0 66 0F 57 C9");
 
     vars.ResetVars = (Action)(() => {
         //Pointers
@@ -545,7 +545,7 @@ startup {
         vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
 
         //Quarble View
-        vars.quarble = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {0x0, 0x0, 0x80, 0x28, 0x50, 0x10, 0x20});
+        vars.quarble = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20});
         vars.quarbleInDone = vars.ReadPointer(proc, vars.quarble+0x20);
     });
 
@@ -587,7 +587,7 @@ startup {
 
             //Update GameManager Pointer
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerPtr+vars.instructionsOffset[3])));
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerPtr+vars.instructionsOffset[4])));
                 vars.gameManagerAddr.Update(proc);
             }
 
@@ -685,7 +685,7 @@ init {
         throw new Exception("[Autosplitter] Can't find signature");
 
     vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x7) == 0x53;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xA8, 0x00} : new int[] {0x136, 0x6E, 0xA6, 0x00};
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xA8, -0x93, 0x00} : new int[] {0x136, 0x6E, 0xA6, -0xAC, 0x00};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
     vars.ResetVars();
