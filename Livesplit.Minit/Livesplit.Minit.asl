@@ -1,8 +1,4 @@
-state ("minit") {
-    int mapcode : 0x005DA568;
-    int isDead : 0x003D8104, 0x0, 0x28, 0x1C, 0xBC;
-    int isItemload : 0x003D8104, 0x0, 0x0, 0x4, 0x4BC, 0xBC;
-}
+state ("minit") {}
 
 startup {
     settings.Add("toilet", true, "Toilet");
@@ -24,8 +20,8 @@ startup {
     settings.Add("item32", false, "Turbo Ink");
     settings.Add("item45", false, "Sword Thrower");
     settings.Add("item48", false, "Flippers");
-    settings.Add("item66", false, "Boatwood");
-    settings.Add("item68", false, "Camera");
+    settings.Add("item66", false, "Press Pass (No SecondRun) [Speedrun Version] & Boatwood (SecondRun only) [Release Version]");
+    settings.Add("item68", false, "Camera [Release Version only]");
     settings.Add("item71", false, "Boatwood");
     settings.Add("item73", false, "Lighthouse Key");
     settings.Add("item79", false, "Coffee");
@@ -52,7 +48,7 @@ startup {
     settings.Add("item81", false, "Coffee Headland");
     settings.Add("item84", false, "Coffee Sewer In");
     settings.Add("item97", false, "Turtle Island");
-    settings.Add("item104", false, "Island House (SR only)");
+    settings.Add("item104", false, "Island House (SecondRun only)");
     settings.Add("item119", false, "Drill");
     settings.Add("item122", false, "Waiting Room");
     settings.Add("item125", false, "Factory Truck");
@@ -64,16 +60,16 @@ startup {
     settings.Add("item11", false, "Bull");
     //settings.Add("item27", false, "Sneaker Hut");  Unavailable since coin on same map
     settings.Add("item34", false, "Secret Temple");
-    settings.Add("item35", false, "Secret Temple (SR only)");
+    settings.Add("item35", false, "Secret Temple (SecondRun only)");
     settings.Add("item51", false, "Bird");
     //settings.Add("item76", false, "Dog");  Unavailable since coin on same map
-    settings.Add("item76", false, "Dog (SR only)");
+    settings.Add("item76", false, "Dog (SecondRun only)");
     settings.Add("item77", false, "Flower");
 
     settings.CurrentDefaultParent = "maps";
     settings.Add("map9", false, "Desert House");
     settings.Add("map22", false, "Lost Person");
-    settings.Add("map24", false, "Lost Person (SR only)");
+    settings.Add("map24", false, "Lost Person (SecondRun only)");
     settings.Add("map29", false, "Desert Tentacle");
     settings.Add("map47", false, "Hotel House");
     settings.Add("map52", false, "Tree Resident");
@@ -112,27 +108,45 @@ startup {
     // 123  Factory Paper
 }
 
+init {
+    vars.watchers = new MemoryWatcherList();
+    
+    if(modules.First().ModuleMemorySize == 0x613000) { //ver1.0.0.0 Release
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x005DA568)) {Name = "map"});
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x28, 0x1C, 0xBC)) {Name = "isDead"});
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x0, 0x4, 0x4BC, 0xBC)) {Name = "isItem"});
+    }
+    if(modules.First().ModuleMemorySize == 0x784000) { //ver1.0.0.3 Speedrun
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x006AAA58)) {Name = "map"});
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68)) {Name = "isDead"});
+        vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8)) {Name = "isItem"});
+    }
+}
+update {
+    vars.watchers.UpdateAll(game);
+}
+
 start {
-    return old.mapcode == 0 && current.mapcode == 76;
+    return vars.watchers["map"].Old == 0 && (vars.watchers["map"].Current == 76 || vars.watchers["map"].Current == 91);
 }
 
 split {
-    if (old.isItemload == 1 && current.isItemload == 0)
-        return (settings.ContainsKey("item"+current.mapcode) && settings["item"+current.mapcode]);
+    if (vars.watchers["isItem"].Old == 1 && vars.watchers["isItem"].Current == 0)
+        return settings.ContainsKey("item"+vars.watchers["map"].Current) && settings["item"+vars.watchers["map"].Current];
 
-    if(old.mapcode != current.mapcode && current.mapcode == 2)
+    if(vars.watchers["map"].Old != vars.watchers["map"].Current && vars.watchers["map"].Current == 2)
         return settings["toilet"];
 
-    if(old.isDead == 1 && current.isDead == 0) {
-        if(old.mapcode == 40) // Temple Death
-            return settings["map40_"+current.mapcode];
-        return settings.ContainsKey("map"+old.mapcode) && settings["map"+old.mapcode];
+    if(vars.watchers["isDead"].Old == 1 && vars.watchers["isDead"].Current == 0) {
+        if(vars.watchers["map"].Old == 40) // Temple Death
+            return settings["map40_"+vars.watchers["map"].Current];
+        return settings.ContainsKey("map"+vars.watchers["map"].Old) && settings["map"+vars.watchers["map"].Old];
     }
 
-    if(old.mapcode != current.mapcode)
-        return settings.ContainsKey("trans"+old.mapcode+"_"+current.mapcode) && settings["trans"+old.mapcode+"_"+current.mapcode];
+    if(vars.watchers["map"].Old != vars.watchers["map"].Current)
+        return settings.ContainsKey("trans"+vars.watchers["map"].Old+"_"+vars.watchers["map"].Current) && settings["trans"+vars.watchers["map"].Old+"_"+vars.watchers["map"].Current];
 }
 
 reset {
-    return current.mapcode == 0;
+    return vars.watchers["map"].Current == 0;
 }
