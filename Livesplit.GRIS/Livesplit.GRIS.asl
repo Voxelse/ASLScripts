@@ -8,6 +8,7 @@ startup {
 	settings.Add("powers", false, "Powers");
 	settings.Add("constellation", false, "Hub Constellation");
 	settings.Add("mementos", false, "Mementos");
+	settings.Add("achievements", false, "Achievements");
 
 	settings.CurrentDefaultParent = "colors";
 	settings.Add("color0", false, "Red");
@@ -76,6 +77,35 @@ startup {
 	settings.Add("mem26", false, "Memento 27");
 	settings.Add("mem27", false, "Memento 28");
 
+	settings.CurrentDefaultParent = "achievements";
+	settings.Add("achColor", false, "Colors");
+	settings.Add("achGrief", false, "Griefs");
+	settings.Add("achInteraction", false, "Interactions");
+
+	settings.Add("ach15", false, "Mementos");
+	settings.Add("ach16", false, "Childhood");
+	settings.Add("ach14", false, "The End");
+
+	settings.CurrentDefaultParent = "achColor";
+	settings.Add("ach0", false, "Red");
+	settings.Add("ach2", false, "Green");
+	settings.Add("ach6", false, "Blue");
+	settings.Add("ach9", false, "Yellow");
+
+	settings.CurrentDefaultParent = "achGrief";
+	settings.Add("ach1", false, "Denial");
+	settings.Add("ach3", false, "Anger");
+	settings.Add("ach7", false, "Bargaining");
+	settings.Add("ach10", false, "Depression");
+	settings.Add("ach12", false, "Acceptance");
+	
+	settings.CurrentDefaultParent = "achInteraction";
+	settings.Add("ach4", false, "Sandstorm");
+	settings.Add("ach5", false, "Inuksuit");
+	settings.Add("ach8", false, "Apples");
+	settings.Add("ach11", false, "Eel");
+	settings.Add("ach13", false, "Magic fowls");	
+
 	vars.ReadPointers = (Func<Process, IntPtr, int[], IntPtr>)((proc, basePtr, offsets) => {
 		IntPtr ptr = basePtr;
 		foreach(int offset in offsets) {
@@ -100,8 +130,6 @@ init {
 	if (vars.ptr == IntPtr.Zero)
 		throw new Exception("[Autosplitter] Can't find signature");
 
-	print("[Autosplitter] Memory at : "+vars.ptr.ToString("X"));
-
 	vars.scenes = new HashSet<string>();
 	vars.curSceneVer = vars.oldSceneVer = 0;
 
@@ -117,17 +145,24 @@ init {
 	vars.mementoList = new List<byte>();
 	vars.curMemento = vars.oldMemento = -1;
 
+	vars.achievementList = new List<byte>();
+	vars.curAchievement = vars.oldAchievement = -1;
+
 	vars.timerResetVars = (EventHandler)((s, e) => {
 		vars.oldColor = vars.curColor = 0;
 		vars.oldPower = vars.curPower = 0;
 		vars.initPower = 0;
 		vars.oldConstellation = vars.curConstellation = 0;
 		vars.curMemento = vars.oldMemento = -1;
+		vars.curAchievement = vars.oldAchievement = -1;
 
 		vars.mementoList.Clear();
-		for(byte i = 0; i < 28; i++) {
+		for(byte i = 0; i < 28; i++)
 			if(settings["mem"+i]) vars.mementoList.Add(i);
-		}
+
+		vars.achievementList.Clear();
+		for(byte i = 0; i < 17; i++)
+			if(settings["ach"+i]) vars.achievementList.Add(i);
 	});
 	timer.OnStart += vars.timerResetVars;
 
@@ -187,14 +222,25 @@ update {
 
 		//Memento
 		vars.oldMemento = vars.curMemento;
-		vars.collectibles = vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x30});
+		var collectibles = vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x30});
 		foreach(byte offset in vars.mementoList) {
-			if(game.ReadValue<byte>(game.ReadPointer((IntPtr)vars.collectibles+0x20+0x8*offset)+0x14) == 1) {
+			if(game.ReadValue<byte>(game.ReadPointer((IntPtr)collectibles+0x20+0x8*offset)+0x14) == 1) {
 				vars.curMemento = offset;
 				break;
 			}
 		}
 		if(vars.curMemento != vars.oldMemento) vars.mementoList.Remove(vars.curMemento);
+
+		//Achievement
+		vars.oldAchievement = vars.curAchievement;
+		var achievements = vars.ReadPointers(game, mainManager, new int[] {0x118, 0x18, 0x10});
+		foreach(byte offset in vars.achievementList) {
+			if(game.ReadValue<byte>(game.ReadPointer((IntPtr)achievements+0x20+0x8*offset)+0x50) == 1) {
+				vars.curAchievement = offset;
+				break;
+			}
+		}
+		if(vars.curAchievement != vars.oldAchievement) vars.achievementList.Remove(vars.curAchievement);
 	}
 }
 
@@ -214,6 +260,9 @@ split {
 
 	if(vars.curMemento != vars.oldMemento)
 		return settings["mem"+vars.curMemento];
+
+	if(vars.curAchievement != vars.oldAchievement)
+		return settings["ach"+vars.curAchievement];
 
 	if(vars.curColor == 6 && vars.oldFadeColor == 0x3F41C1C2 && vars.curFadeColor == 0)
 		return settings["end"];
