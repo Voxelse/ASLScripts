@@ -513,7 +513,7 @@ startup {
         
         vars.timerOldPhase = TimerPhase.NotRunning;
 
-        vars.quarbleInDone  = vars.quarble = IntPtr.Zero;
+        vars.quarbleInDone  = vars.quarbleAnim = IntPtr.Zero;
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
@@ -545,8 +545,15 @@ startup {
         vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
 
         //Quarble View
-        vars.quarble = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20});
-        vars.quarbleInDone = vars.ReadPointer(proc, vars.quarble+0x20);
+        if(vars.quarbleUIOffset == 0x0) {
+            if(vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
+            if(vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x58, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x58;
+        }
+        if(vars.quarbleUIOffset != 0x0) {
+            var quarbleUI = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, vars.quarbleUIOffset, 0x10, 0x20});
+            vars.quarbleAnim = vars.ReadPointer(proc, quarbleUI+0x18);
+            vars.quarbleInDone = vars.ReadPointer(proc, quarbleUI+0x20);
+        }
     });
 
     vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
@@ -688,6 +695,8 @@ init {
     vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xA8, -0x93, 0x00} : new int[] {0x136, 0x6E, 0xA6, -0xAC, 0x00};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
+    vars.quarbleUIOffset = 0x0;
+
     vars.ResetVars();
 
     refreshRate = 60;
@@ -806,5 +815,5 @@ split {
 }
 
 isLoading {
-    return vars.quarble != IntPtr.Zero && vars.quarbleInDone == IntPtr.Zero;
+    return vars.quarbleAnim != IntPtr.Zero && vars.quarbleInDone == IntPtr.Zero;
 }
