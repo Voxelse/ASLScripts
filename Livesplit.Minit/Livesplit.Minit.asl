@@ -1,7 +1,7 @@
 state ("minit") {}
 
 startup {
-    settings.Add("toilet", true, "Toilet");
+    settings.Add("end", true, "End (Boss/Toilet)");
     settings.Add("items", false, "Items");
     settings.SetToolTip("items", "Split after items obtained");
     settings.Add("coins", false, "Coins");
@@ -113,11 +113,13 @@ init {
     
     if(modules.First().ModuleMemorySize == 0x613000) { //ver1.0.0.0 Release
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x005DA568)) {Name = "map"});
+        vars.watchers.Add(new MemoryWatcher<byte>(new DeepPointer(0x005DC900)) {Name = "end"});
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x28, 0x1C, 0xBC)) {Name = "isDead"});
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x0, 0x4, 0x4BC, 0xBC)) {Name = "isItem"});
     }
     if(modules.First().ModuleMemorySize == 0x784000) { //ver1.0.0.3 Speedrun
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x006AAA58)) {Name = "map"});
+        vars.watchers.Add(new MemoryWatcher<byte>(new DeepPointer(0x006ACDF0)) {Name = "end"});
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68)) {Name = "isDead"});
         vars.watchers.Add(new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8)) {Name = "isItem"});
     }
@@ -127,15 +129,15 @@ update {
 }
 
 start {
-    return vars.watchers["map"].Old == 0 && (vars.watchers["map"].Current == 76 || vars.watchers["map"].Current == 91);
+    return vars.watchers["map"].Current == 91 && vars.watchers["isItem"].Old == 1 && vars.watchers["isItem"].Current == 0;
 }
 
 split {
     if (vars.watchers["isItem"].Old == 1 && vars.watchers["isItem"].Current == 0)
         return settings.ContainsKey("item"+vars.watchers["map"].Current) && settings["item"+vars.watchers["map"].Current];
 
-    if(vars.watchers["map"].Old != vars.watchers["map"].Current && vars.watchers["map"].Current == 2)
-        return settings["toilet"];
+    if((vars.watchers["map"].Changed && vars.watchers["map"].Current == 2) || (vars.watchers["end"].Old == 0 && vars.watchers["end"].Current == 128))
+        return settings["end"];
 
     if(vars.watchers["isDead"].Old == 1 && vars.watchers["isDead"].Current == 0) {
         if(vars.watchers["map"].Old == 40) // Temple Death
@@ -148,5 +150,5 @@ split {
 }
 
 reset {
-    return vars.watchers["map"].Current == 0;
+    return vars.watchers["map"].Changed && vars.watchers["map"].Current == 0;
 }
