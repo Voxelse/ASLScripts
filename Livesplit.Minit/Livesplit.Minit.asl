@@ -161,8 +161,8 @@ init {
         vars.end = new MemoryWatcher<byte>(new DeepPointer(0x006ACDF0));
         vars.isDead = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68));
         vars.isItem = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8));
-        var progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        vars.savePath = progFiles + @"\Steam\userdata\58838374\609490\remote\minit_v1.sav";
+        var steamPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) + @"\Steam\userdata";
+        vars.savePath = Directory.GetDirectories(steamPath)[0] + @"\609490\remote\minit_v1.sav";
     }
 
     vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
