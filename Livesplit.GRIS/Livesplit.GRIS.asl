@@ -221,15 +221,17 @@ update {
 		vars.curConstellation = game.ReadValue<int>(game.ReadPointer(mainManager+0xD0)+0x5C);
 
 		//Memento
-		vars.oldMemento = vars.curMemento;
-		var collectibles = vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x30});
-		foreach(byte offset in vars.mementoList) {
-			if(game.ReadValue<byte>(game.ReadPointer((IntPtr)collectibles+0x20+0x8*offset)+0x14) == 1) {
-				vars.curMemento = offset;
-				break;
+		if(vars.curPower > 0) {
+			vars.oldMemento = vars.curMemento;
+			var collectibles = vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x30});
+			foreach(byte offset in vars.mementoList) {
+				if(game.ReadValue<byte>(game.ReadPointer((IntPtr)collectibles+0x20+0x8*offset)+0x14) == 1) {
+					vars.curMemento = offset;
+					break;
+				}
 			}
+			if(vars.curMemento != vars.oldMemento) vars.mementoList.Remove(vars.curMemento);
 		}
-		if(vars.curMemento != vars.oldMemento) vars.mementoList.Remove(vars.curMemento);
 
 		//Achievement
 		vars.oldAchievement = vars.curAchievement;
