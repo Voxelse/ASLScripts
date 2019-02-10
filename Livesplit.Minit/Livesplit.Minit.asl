@@ -83,23 +83,23 @@ startup {
     settings.Add("map117", false, "Cog");
     settings.Add("map132", false, "Tent House");    
 
-    settings.Add("map40_9", false, "Temple - Desert House");
-    settings.Add("map40_47", false, "Temple - Hotel House");
-    settings.Add("map40_76", false, "Temple - Start House");
-    settings.Add("map40_104", false, "Temple - Island House");
+    settings.Add("trans40_9", false, "Temple for Desert House");
+    settings.Add("trans40_47", false, "Temple for Hotel House");
+    settings.Add("trans40_76", false, "Temple for Start House");
+    settings.Add("trans40_104", false, "Temple for Island House");
 
     settings.CurrentDefaultParent = "trans";
     settings.Add("trans8_9", false, "Enter Desert House");
     settings.Add("trans46_47", false, "Enter Hostel House");
-    settings.Add("trans48_49", false, "Hotel To Bandits");
+    settings.Add("trans48_49", false, "Hotel to Bandits");
     settings.Add("trans49_53", false, "Bandit Resident to Card Resident");
     settings.Add("trans52_50", false, "Tree Resident to Graveyard");
     settings.Add("trans62_63", false, "Bombs to Bridge");
     settings.Add("trans70_71", false, "Sake Cave to Outside");
-    settings.Add("trans111_112", false, "Left Conveyor To Right");
-    settings.Add("trans113_116", false, "Right Conveyor To Bottom");
+    settings.Add("trans111_112", false, "Left Conveyor to Right");
+    settings.Add("trans113_116", false, "Right Conveyor to Bottom");
     settings.Add("trans120_119", false, "Enter Drill Room");
-    settings.Add("trans112_128", false, "Enter Boss");
+    settings.Add("trans112_128", false, "Enter Boss Room");
 
     // Tentacles
     // 29   Left Desert
@@ -259,19 +259,16 @@ start {
 }
 
 split {
+    if((vars.map.Changed && vars.map.Current == 2) || (vars.end.Old == 0 && vars.end.Current == 128))
+        return settings["end"];
+
     if (!vars.itemToSplit.Equals("") && settings[vars.itemToSplit]) {
         vars.itemToSplit = "";
         return true;
     }
 
-    if((vars.map.Changed && vars.map.Current == 2) || (vars.end.Old == 0 && vars.end.Current == 128))
-        return settings["end"];
-
-    if(vars.isDead.Old == 1 && vars.isDead.Current == 0) {
-        if(vars.map.Old == 40)
-            return settings["map40_"+vars.map.Current];
-        return settings.ContainsKey("map"+vars.map.Old) && settings["map"+vars.map.Old];
-    }
+    if(vars.isDead.Old == 1 && vars.isDead.Current == 0 && settings.ContainsKey("map"+vars.map.Old) && settings["map"+vars.map.Old])
+        return true;
 
     if(vars.map.Old != vars.map.Current) {
         var trans = "trans"+vars.map.Old+"_"+vars.map.Current;
