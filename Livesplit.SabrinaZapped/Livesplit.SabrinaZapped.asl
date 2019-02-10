@@ -22,25 +22,42 @@ startup {
         settings.Add("l"+(worldLvl+3), true, "Level "+world+"-4");
         settings.Add("l"+(worldLvl+4), true, "Level "+world+"-Boss");
     }
+
+    vars.SigScan = (Func<Process, SigScanTarget, IntPtr>)((proc, target) =>
+    {
+        print("[Autosplitter] Scanning memory");
+        IntPtr ptr = IntPtr.Zero;
+        foreach (var page in proc.MemoryPages()) {
+            var scanner = new SignatureScanner(proc, page.BaseAddress, (int)page.RegionSize);
+            if ((ptr = scanner.Scan(target)) != IntPtr.Zero)
+                break;
+        }
+        return ptr;
+    });
 }
 
 init {
     IntPtr ptr = IntPtr.Zero;
-    var target = new SigScanTarget(0, "FF FF 10 00 00 00 00 FF FF");
+    bool useDeepPtr = false;
 
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        if((ptr = scanner.Scan(target)) != IntPtr.Zero)
-            break;
+    if (memory.ProcessName.Equals("emuhawk", StringComparison.OrdinalIgnoreCase)) {
+        var target = new SigScanTarget(0, "05 00 00 00 ?? 00 00 00 00 ?? ?? 00 00 ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? F8 00 00 00");
+        IntPtr wram = vars.SigScan(game, target);
+        if (wram != IntPtr.Zero)
+            ptr = (IntPtr)((long)(wram-0x40)-(long)modules.First().BaseAddress);
+        useDeepPtr = true;
+    } else {
+        var target = new SigScanTarget(0, "FF FF 10 00 00 00 00 FF FF");
+        ptr = vars.SigScan(game, target);
     }
 
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
     
-    vars.aniLeft = new MemoryWatcher<byte>(ptr+0x83);
+    vars.aniLeft = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x9FB)) : new MemoryWatcher<byte>(ptr+0x83);
 
-    vars.level = new MemoryWatcher<byte>(ptr+0x92);
-    vars.pause = new MemoryWatcher<byte>(ptr+0xAE);
+    vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA0A)) : new MemoryWatcher<byte>(ptr+0x92);
+    vars.pause = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA26)) : new MemoryWatcher<byte>(ptr+0xAE);
     
     refreshRate = 60;
 }
