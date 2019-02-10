@@ -14,7 +14,7 @@ startup {
     settings.SetToolTip("trans", "Split on map transitions");
 
     settings.CurrentDefaultParent = "items";
-    settings.Add("item1", false, "Sword");
+    // settings.Add("item1", false, "Sword");
     settings.Add("item2", false, "Coffee");
     settings.Add("item3", false, "Flashlight");
     settings.Add("item4", false, "Flippers");
@@ -27,7 +27,7 @@ startup {
     settings.Add("item11", false, "Camera");
     settings.Add("item12", false, "Basement Key");
     settings.Add("item13", false, "Mega Sword");
-    settings.Add("item15", false, "Broken Sword");
+    // settings.Add("item15", false, "Broken Sword");
     settings.Add("item16", false, "Press Pass");
     settings.Add("item17", false, "Turbo Ink");
     settings.Add("item18", false, "Grinder");
@@ -127,7 +127,7 @@ startup {
                 return type+i;
             }
         }
-        return "";
+        return vars.itemToSplit;
     });
 
     vars.timerResetVars = (EventHandler)((s, e) => {
@@ -140,6 +140,7 @@ startup {
         vars.coins = new bool[19];
         vars.hpups = new bool[6];
 
+        vars.slotId = 0;
         vars.itemToSplit = "";
     });
     timer.OnStart += vars.timerResetVars;
@@ -176,6 +177,7 @@ init {
     vars.coins = new bool[19];
     vars.hpups = new bool[6];
 
+    vars.slotId = 0;
     vars.itemToSplit = "";
 }
 
@@ -201,37 +203,43 @@ update {
                 
                 var line = reader.ReadLine();
                 
-                var readId = 300;
-                var slot = line.Substring((readId = line.IndexOf("currentSlot", readId, strComp))+16, 1);                                   //422
-                if(slot.Equals("0"))
-                    readId = line.IndexOf("\"slot0\\", readId+200, strComp);   //759
-                else if(slot.Equals("2"))
-                    readId = line.IndexOf("\"slot2\\", readId+16700, strComp); //17238
-                else if(slot.Equals("1")) {
-                    readId = line.IndexOf("\"slot2\\", readId+16700, strComp);
-                    bool slotEmpty = line.Substring(readId+10, 33).Equals("{ \\\"slotIsEmpty\\\": [ 1.000000 ] }");
-                    readId = line.IndexOf("\"slot1\\", (slotEmpty ? readId : readId+16000), strComp);  //33711
+                if(vars.slotId == 0) {
+                    var slot = line.Substring((vars.slotId = line.IndexOf("currentSlot", 300, strComp))+16, 1);                         //422
+                    if(slot.Equals("0"))        //759
+                        vars.slotId = line.IndexOf("\"slot0\\", vars.slotId+200, strComp);
+                    else if(slot.Equals("2"))   //17238
+                        vars.slotId = line.IndexOf("\"slot2\\", vars.slotId+16700, strComp);
+                    else if(slot.Equals("1")) { //33711
+                        vars.slotId = line.IndexOf("\"slot2\\", vars.slotId+16700, strComp);
+                        bool slotEmpty = line.Substring(vars.slotId+10, 33).Equals("{ \\\"slotIsEmpty\\\": [ 1.000000 ] }");
+                        vars.slotId = line.IndexOf("\"slot1\\", (slotEmpty ? vars.slotId : vars.slotId+16000), strComp);
+                    }
                 }
 
-                var nbCoin = int.Parse(line.Substring((readId = line.IndexOf("\"coins\\", readId, strComp))+12, 2).Split('.')[0]);          //1679
-                var nbHpup = int.Parse(line.Substring((readId = line.IndexOf("\"hpups\\", readId, strComp))+12, 1));                        //1875
+                var readId = vars.slotId;
+
+                var nbCoin = int.Parse(line.Substring((readId = line.IndexOf("\"coins\\", readId, strComp))+12, 2).Split('.')[0]);      //1679
+                var nbHpup = int.Parse(line.Substring((readId = line.IndexOf("\"hpups\\", readId, strComp))+12, 1));                    //1875
 
                 readId += 12000;
-                if(nbCoin != vars.ItemNumber(vars.coins))                                                                                   //14677
+                if(nbCoin != vars.ItemNumber(vars.coins))                                                                               //14677
                     vars.itemToSplit = vars.SearchNewItem(line, "coin", vars.coins, readId);
 
-                var nbItem = int.Parse(line.Substring((readId = line.IndexOf("\"items\\", readId, strComp))+12, 2).Split('.')[0])+1;        //15081
+                var nbItem = int.Parse(line.Substring((readId = line.IndexOf("\"items\\", readId, strComp))+12, 2).Split('.')[0])+1;    //15081
     
-                string lineTime = line.Substring((readId = line.IndexOf("time", readId, strComp))+10);                                      //15174
+                string lineTime = line.Substring((readId = line.IndexOf("time", readId, strComp))+10);                                  //15174
                 TimeSpan baseIgt = TimeSpan.FromSeconds(int.Parse(lineTime.Substring(0, lineTime.IndexOf(".", strComp)))/60f);
                 int factor = (int)Math.Pow(10, 5);
                 vars.igtime = new TimeSpan(((long)Math.Round((1.0f*baseIgt.Ticks/factor))*factor));
 
                 if(nbHpup != vars.ItemNumber(vars.hpups))
-                    vars.itemToSplit = vars.SearchNewItem(line, "hpup", vars.hpups, readId);                                                //15656
-    
-                if(nbItem != vars.ItemNumber(vars.items))
-                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                                //16196
+                    vars.itemToSplit = vars.SearchNewItem(line, "hpup", vars.hpups, readId);                                            //15656
+                
+                if(settings["item19"] && !vars.items[19] && line.Substring(line.IndexOf("\"item\\", readId, strComp)+201, 1).Equals("1")) {
+                    vars.items[19] = true;
+                    vars.itemToSplit = "item19";
+                } else if(nbItem != vars.ItemNumber(vars.items))
+                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                            //16196
 
                 if(vars.isDead.Current != 1)
                     vars.gameTimeWatch.Restart();
@@ -262,9 +270,10 @@ split {
     if((vars.map.Changed && vars.map.Current == 2) || (vars.end.Old == 0 && vars.end.Current == 128))
         return settings["end"];
 
-    if (!vars.itemToSplit.Equals("") && settings[vars.itemToSplit]) {
+    if (!vars.itemToSplit.Equals("")) {
+        var itemSplit = vars.itemToSplit;
         vars.itemToSplit = "";
-        return true;
+        if(settings.ContainsKey(itemSplit) && settings[itemSplit]) return true;
     }
 
     if(vars.isDead.Old == 1 && vars.isDead.Current == 0 && settings.ContainsKey("map"+vars.map.Old) && settings["map"+vars.map.Old])
