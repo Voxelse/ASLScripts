@@ -6,7 +6,7 @@ startup {
     refreshRate = 0.5;
 
     settings.Add("trSplit", false, "Stage Splits : transition instead of 100%");
-    settings.Add("udEnd", false, "[Temporary] End Split : end transition (UD rules) instead of end 100% (SRC rules)");
+    settings.Add("udEnd", false, "[Temporary] End Split : \"Well Done\" (UD rules) instead of 100% (SRC rules)");
     
     for(int lawn = 0; lawn <= 9; lawn++)
         settings.Add("lawn"+lawn, true, "Lawn "+(lawn>8?"":"0")+(lawn+1));
