@@ -1,6 +1,4 @@
-state ("TheMessenger") {
-    //Need to replace custom ReadPointers to DeepPointers when 64bits pointers will be supported (e.g vars.UpdatePointers)
-}
+state ("TheMessenger") {}
 
 startup {
     refreshRate = 0.5;
@@ -8,6 +6,7 @@ startup {
     settings.Add("Levels", true, "Levels");
     settings.Add("Inventory", false, "Inventory");
     settings.Add("RoomTimer", false, "Individual Room Timer");
+    settings.Add("ILStart", false, "Start for IL Practice");
 
     settings.CurrentDefaultParent = "Levels";
         settings.Add("01_NinjaVillage", false, "Ninja Village");
@@ -480,7 +479,7 @@ startup {
 
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
-    vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ???????? F3 0F 5A C0 66 0F 57 C9");
+    vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
 
     vars.ResetVars = (Action)(() => {
         //Pointers
@@ -772,7 +771,7 @@ update {
 }
 
 start {
-    return vars.currentSceneName.StartsWith("Level_01") && vars.oldSceneName.Length < 8;
+    return vars.currentSceneName.StartsWith((settings["ILStart"] ? "Level_" : "Level_01")) && vars.oldSceneName.Length < 8;
 }
 
 split {
