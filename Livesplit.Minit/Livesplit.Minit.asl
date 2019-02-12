@@ -136,7 +136,7 @@ startup {
         vars.gameTimeWatch.Restart();
 
         vars.items = new bool[20];
-        vars.items[0] = true;
+        vars.items[0] = vars.items[1] = true;
         vars.coins = new bool[19];
         vars.hpups = new bool[6];
 
@@ -173,7 +173,7 @@ init {
     vars.gameTimeWatch = new Stopwatch();
 
     vars.items = new bool[20];
-    vars.items[0] = true;
+    vars.items[0] = vars.items[1] = true;
     vars.coins = new bool[19];
     vars.hpups = new bool[6];
 
@@ -239,7 +239,7 @@ update {
                     vars.items[19] = true;
                     vars.itemToSplit = "item19";
                 } else if(nbItem != vars.ItemNumber(vars.items))
-                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                            //16196
+                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                     //16196
 
                 if(vars.isDead.Current != 1)
                     vars.gameTimeWatch.Restart();
