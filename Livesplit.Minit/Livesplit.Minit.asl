@@ -147,8 +147,6 @@ startup {
 }
 
 init {
-    vars.watchers = new MemoryWatcherList();
-    
     if(modules.First().ModuleMemorySize == 0x613000) { //ver1.0.0.0 Release
         vars.map = new MemoryWatcher<int>(new DeepPointer(0x005DA568));
         vars.end = new MemoryWatcher<byte>(new DeepPointer(0x005DC900));
@@ -163,7 +161,15 @@ init {
         vars.isDead = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68));
         vars.isItem = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8));
         var steamPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) + @"\Steam\userdata";
-        vars.savePath = Directory.GetDirectories(steamPath)[0] + @"\609490\remote\minit_v1.sav";
+        DateTime lastModified = new DateTime(0);  
+        string steamUserPath = "";
+        foreach(string dir in Directory.GetDirectories(steamPath)) {
+            if(DateTime.Compare(lastModified, Directory.GetLastWriteTime(dir+@"\609490\remotecache.vdf")) < 0) {
+                lastModified = Directory.GetLastWriteTime(dir+@"\609490\remotecache.vdf");
+                steamUserPath = dir;
+            }
+        }
+        vars.savePath = steamUserPath + @"\609490\remote\minit_v1.sav";
     }
 
     vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
