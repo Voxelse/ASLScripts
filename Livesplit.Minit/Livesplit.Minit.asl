@@ -14,7 +14,7 @@ startup {
     settings.SetToolTip("trans", "Split on map transitions");
 
     settings.CurrentDefaultParent = "items";
-    // settings.Add("item1", false, "Sword");
+    // 1 Sword
     settings.Add("item2", false, "Coffee");
     settings.Add("item3", false, "Flashlight");
     settings.Add("item4", false, "Flippers");
@@ -27,7 +27,7 @@ startup {
     settings.Add("item11", false, "Camera");
     settings.Add("item12", false, "Basement Key");
     settings.Add("item13", false, "Mega Sword");
-    // settings.Add("item15", false, "Broken Sword");
+    // 15 Broken Sword
     settings.Add("item16", false, "Press Pass");
     settings.Add("item17", false, "Turbo Ink");
     settings.Add("item18", false, "Grinder");
@@ -160,7 +160,9 @@ init {
         vars.end = new MemoryWatcher<byte>(new DeepPointer(0x006ACDF0));
         vars.isDead = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68));
         vars.isItem = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8));
-        var steamPath = Path.GetFullPath(Path.Combine(game.MainModule.FileName, @"..\..\..\..\"))+"userdata";
+        var steamPath = "";
+        using(Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+            steamPath = Path.GetFullPath(Path.Combine(key.GetValue("SteamPath").ToString(), "userdata"));
         DateTime lastModified = new DateTime(0);  
         string steamUserPath = "";
         foreach(string dir in Directory.GetDirectories(steamPath)) {
