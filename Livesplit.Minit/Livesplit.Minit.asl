@@ -130,6 +130,16 @@ startup {
         return vars.itemToSplit;
     });
 
+    vars.FixLastSplit = (Action)(() => {
+        Time splitTime = timer.Run.Last().SplitTime;
+        splitTime.GameTime = vars.igtime;
+        timer.Run.Last().SplitTime = splitTime;
+
+        Time bestTime = timer.Run.Last().BestSegmentTime;
+        bestTime.GameTime = (vars.lastGoldSplit == null || (TimeSpan.Compare(vars.lastGoldSplit, vars.igtime) == 1) ? vars.igtime : vars.lastGoldSplit);
+        timer.Run.Last().BestSegmentTime = bestTime;
+    });
+
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.transitionsDone.Clear();
         vars.igtime = new TimeSpan();
@@ -142,6 +152,8 @@ startup {
 
         vars.slotId = 0;
         vars.itemToSplit = "";
+
+        vars.lastGoldSplit = new TimeSpan(0);
     });
     timer.OnStart += vars.timerResetVars;
 }
@@ -187,6 +199,8 @@ init {
 
     vars.slotId = 0;
     vars.itemToSplit = "";
+
+    vars.lastGoldSplit = new TimeSpan(0);
 }
 
 update {
@@ -254,20 +268,14 @@ update {
                 else
                     vars.gameTimeWatch.Reset();
 
-                if(vars.map.Current == 128 && timer.CurrentPhase == TimerPhase.Ended) {
-                    Time splitTime = timer.Run.Last().SplitTime;
-                    splitTime.GameTime = vars.igtime;
-                    timer.Run.Last().SplitTime = splitTime;
-                }
+                if(vars.map.Current == 128 && timer.CurrentPhase == TimerPhase.Ended)
+                    vars.FixLastSplit();
             }
         }
     }
 
-    if(vars.map.Current == 2 && timer.CurrentPhase == TimerPhase.Ended) {
-        Time splitTime = timer.Run.Last().SplitTime;
-        splitTime.GameTime = vars.igtime;
-        timer.Run.Last().SplitTime = splitTime;
-    }
+    if(vars.map.Current == 2 && timer.CurrentPhase == TimerPhase.Ended)
+        vars.FixLastSplit();
 }
 
 start {
@@ -275,8 +283,10 @@ start {
 }
 
 split {
-    if((vars.map.Changed && vars.map.Current == 2) || (vars.end.Old == 0 && vars.end.Current == 128))
-        return settings["end"];
+    if(((vars.map.Changed && vars.map.Current == 2) || (vars.map.Current == 128 && vars.end.Old == 0 && vars.end.Current == 128)) && settings["end"]) {
+        vars.lastGoldSplit = timer.Run.Last().BestSegmentTime.GameTime;
+        return true;
+    }
 
     if (!vars.itemToSplit.Equals("")) {
         var itemSplit = vars.itemToSplit;
