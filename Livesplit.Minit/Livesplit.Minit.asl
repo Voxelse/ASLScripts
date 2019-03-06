@@ -132,17 +132,17 @@ startup {
 
     vars.FixLastSplit = (Action)(() => {
         Time splitTime = timer.Run.Last().SplitTime;
-        splitTime.GameTime = vars.igtime;
+        splitTime.GameTime = vars.IGTime;
         timer.Run.Last().SplitTime = splitTime;
 
         Time bestTime = timer.Run.Last().BestSegmentTime;
-        bestTime.GameTime = (vars.lastGoldSplit == null || (TimeSpan.Compare(vars.lastGoldSplit, vars.igtime) == 1) ? vars.igtime : vars.lastGoldSplit);
+        bestTime.GameTime = vars.lastGoldSplit;
         timer.Run.Last().BestSegmentTime = bestTime;
     });
 
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.transitionsDone.Clear();
-        vars.igtime = new TimeSpan(0);
+        vars.oldIGTime = vars.IGTime = new TimeSpan(0);
 
         vars.items = new bool[20];
         vars.items[0] = vars.items[1] = true;
@@ -188,7 +188,7 @@ init {
     vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
 
     vars.transitionsDone = new HashSet<string>();
-    vars.igtime = new TimeSpan(0);
+    vars.oldIGTime = vars.IGTime = new TimeSpan(0);
 
     vars.items = new bool[20];
     vars.items[0] = vars.items[1] = true;
@@ -244,7 +244,7 @@ update {
                 string lineTime = line.Substring((readId = line.IndexOf("time", readId, strComp))+10);                                  //15174
                 TimeSpan baseIgt = TimeSpan.FromSeconds(int.Parse(lineTime.Substring(0, lineTime.IndexOf(".", strComp)))/60f);
                 int factor = (int)Math.Pow(10, 5);
-                vars.igtime = new TimeSpan(((long)Math.Round((1.0f*baseIgt.Ticks/factor))*factor));
+                vars.IGTime = new TimeSpan(((long)Math.Round((1.0f*baseIgt.Ticks/factor))*factor));
 
                 if(nbHpup != vars.ItemNumber(vars.hpups))
                     vars.itemToSplit = vars.SearchNewItem(line, "hpup", vars.hpups, readId);                                            //15656
@@ -300,10 +300,9 @@ isLoading {
 }
 
 gameTime {
-    if(vars.igtime.Ticks != 0) {
-        var igt = vars.igtime;
-        vars.igtime = new TimeSpan(0);
-        return igt;
+    if(vars.oldIGTime.Ticks != vars.IGTime.Ticks) {
+        vars.oldIGTime = vars.IGTime;
+        return vars.IGTime;
     }
 }
 
