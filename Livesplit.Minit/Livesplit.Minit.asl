@@ -142,8 +142,7 @@ startup {
 
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.transitionsDone.Clear();
-        vars.igtime = new TimeSpan();
-        vars.gameTimeWatch.Restart();
+        vars.igtime = new TimeSpan(0);
 
         vars.items = new bool[20];
         vars.items[0] = vars.items[1] = true;
@@ -189,8 +188,7 @@ init {
     vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
 
     vars.transitionsDone = new HashSet<string>();
-    vars.igtime = new TimeSpan();
-    vars.gameTimeWatch = new Stopwatch();
+    vars.igtime = new TimeSpan(0);
 
     vars.items = new bool[20];
     vars.items[0] = vars.items[1] = true;
@@ -208,12 +206,6 @@ update {
     vars.isDead.Update(game);
     vars.isItem.Update(game);
     vars.end.Update(game);
-
-    if((vars.isItem.Old == 0 && vars.isItem.Current == 1) || (vars.end.Old == 0 && vars.end.Current == 128))
-        vars.gameTimeWatch.Stop();
-
-    if(vars.isDead.Old == 1 && vars.isDead.Current == 0 && vars.map.Current != 2)
-        vars.gameTimeWatch.Restart();
 
     if(vars.lastTimeChange < File.GetLastWriteTime(vars.savePath).Ticks) {
         vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
@@ -261,12 +253,7 @@ update {
                     vars.items[19] = true;
                     vars.itemToSplit = "item19";
                 } else if(nbItem != vars.ItemNumber(vars.items))
-                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                     //16196
-
-                if(vars.isDead.Current != 1)
-                    vars.gameTimeWatch.Restart();
-                else
-                    vars.gameTimeWatch.Reset();
+                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                            //16196
 
                 if(vars.map.Current == 128 && timer.CurrentPhase == TimerPhase.Ended)
                     vars.FixLastSplit();
@@ -309,11 +296,15 @@ reset {
 }
 
 isLoading {
-    return true;
+    return vars.isDead.Old == 1 || vars.isItem.Current == 1;
 }
 
 gameTime {
-    return vars.igtime + vars.gameTimeWatch.Elapsed;
+    if(vars.igtime.Ticks != 0) {
+        var igt = vars.igtime;
+        vars.igtime = new TimeSpan(0);
+        return igt;
+    }
 }
 
 shutdown {
