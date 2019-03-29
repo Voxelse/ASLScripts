@@ -27,7 +27,7 @@ startup {
     settings.Add("b4_8", false, "Mid-Boss (Lololo & Lalala)", "s4");
     settings.Add("b4_9", false, "Mid-Boss (Kracko)", "s4");
 
-    vars.endRoom = new Dictionary<byte, byte>{{0, 4}, {1, 15}, {2, 7}, {3, 9}};
+    vars.endRoom = new byte[] {4, 15, 7, 9};
 
     vars.SigScan = (Func<Process, SigScanTarget, IntPtr>)((proc, target) => {
         print("[Autosplitter] Scanning memory");
@@ -40,9 +40,13 @@ startup {
         return ptr;
     });
 
-    vars.timerResetVars = (EventHandler)((s, e) => {
+    vars.InitVars = (Action)(() => {
         vars.animCount = 0;
         vars.diedInBoss = false;
+    });
+
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.InitVars();
     });
     timer.OnStart += vars.timerResetVars;
 }
@@ -64,32 +68,25 @@ init {
 
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
-    
-    vars.anim = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x6)) : new MemoryWatcher<byte>(ptr-0x1033);
-    vars.world = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x103B)) : new MemoryWatcher<byte>(ptr+0x2);
-    vars.room = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x103E)) : new MemoryWatcher<byte>(ptr+0x5);
-    vars.life = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x1089)) : new MemoryWatcher<byte>(ptr+0x50);
-    vars.bossHp = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x1093)) : new MemoryWatcher<byte>(ptr+0x5A);
-    vars.star = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x13DE)) : new MemoryWatcher<byte>(ptr+0x3A5);
 
-    vars.animCount = 0;
-    vars.diedInBoss = false;
+    vars.watchers = new MemoryWatcherList() {
+        (vars.anim = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x6)) : new MemoryWatcher<byte>(ptr-0x1033)),
+        (vars.world = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x103B)) : new MemoryWatcher<byte>(ptr+0x2)),
+        (vars.room = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x103E)) : new MemoryWatcher<byte>(ptr+0x5)),
+        (vars.life = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x1089)) : new MemoryWatcher<byte>(ptr+0x50)),
+        (vars.bossHp = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x1093)) : new MemoryWatcher<byte>(ptr+0x5A)),
+        (vars.star = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x13DE)) : new MemoryWatcher<byte>(ptr+0x3A5))
+    };
 
-    refreshRate = 60;
+    vars.InitVars();
+
+    refreshRate = 200/3d;
 }
 
 update {
-    vars.world.Update(game);
-    vars.room.Update(game);
-    vars.life.Update(game);
-    vars.bossHp.Update(game);
-   
-     if(settings["star"])
-        vars.star.Update(game);
-    else
-        vars.anim.Update(game);
-
-    if(vars.bossHp.Current == 1 && (vars.life.Current < vars.life.Old || vars.life.Current == 5 && vars.life.Old == 1))
+    vars.watchers.UpdateAll(game);
+    
+    if(vars.bossHp.Current == 1 && (vars.life.Current < vars.life.Old || (vars.life.Current == 5 && vars.life.Old == 1)))
         vars.diedInBoss = true;
 }
 
@@ -102,11 +99,9 @@ split {
         if(settings["star"]) {
             return vars.star.Old == 128 && vars.star.Current == 0;
         } else {
-            if(vars.anim.Old != 80 && vars.anim.Current == 80) {
-                if(++vars.animCount >= (vars.world.Current == 3 ? 2 : 3)) {
-                    vars.animCount = 0;
-                    return true;
-                }
+            if(vars.anim.Old != 80 && vars.anim.Current == 80 && (++vars.animCount >= (vars.world.Current == 3 ? 2 : 3))) {
+                vars.animCount = 0;
+                return true;
             }   
         }
     }
@@ -115,7 +110,7 @@ split {
         if (vars.diedInBoss) 
             vars.diedInBoss = false;
         else {
-            var bossSplit = "b"+vars.world.Current+"_"+vars.room.Current;
+            string bossSplit = "b"+vars.world.Current+"_"+vars.room.Current;
             return settings.ContainsKey(bossSplit) && settings[bossSplit];
         }
     }

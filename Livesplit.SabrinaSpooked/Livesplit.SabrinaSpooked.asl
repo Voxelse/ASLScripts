@@ -1,9 +1,9 @@
-state("bgb") {}
-state("bgb64") {}
-state("emuhawk") {}
-state("gambatte") {}
-state("gambatte_qt") {}
 state("gambatte_qt_nonpsr") {}
+state("gambatte_qt") {}
+state("gambatte") {}
+state("emuhawk") {}
+state("bgb64") {}
+state("bgb") {}
 
 startup {
     refreshRate = 0.5;
@@ -50,24 +50,23 @@ init {
         var target = new SigScanTarget(0, "FF 10 00 00 00 00 00 00 00 FF");
         ptr = vars.SigScan(game, target);
     }
-    
 
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
-    
-    vars.start = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x3091)) : new MemoryWatcher<byte>(ptr+0x26AB);
 
-    vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAF1)) : new MemoryWatcher<byte>(ptr+0x10B);
-    vars.endPortal = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA94)) : new MemoryWatcher<byte>(ptr+0xAE);
-    vars.endDissapear = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB01)) : new MemoryWatcher<byte>(ptr+0x11B);
+    vars.start = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x3091)) : new MemoryWatcher<byte>(ptr+0x26AB);
     
-    refreshRate = 60;
+    vars.watchers = new MemoryWatcherList() {
+        (vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAF1)) : new MemoryWatcher<byte>(ptr+0x10B)),
+        (vars.endPortal = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA94)) : new MemoryWatcher<byte>(ptr+0xAE)),
+        (vars.endDisappear = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB01)) : new MemoryWatcher<byte>(ptr+0x11B))
+    };
+
+    refreshRate = 200/3d;
 }
 
 update {
-    vars.level.Update(game);
-    vars.endPortal.Update(game);
-    vars.endDissapear.Update(game);
+    vars.watchers.UpdateAll(game);
 }
 
 start {
@@ -76,6 +75,6 @@ start {
 }
 
 split {
-    if((vars.level.Current < 20 ? vars.endDissapear.Current == 1 : true) && vars.endPortal.Old == 1 && vars.endPortal.Current == 0)
+    if((vars.level.Current < 20 ? vars.endDisappear.Current == 1 : true) && vars.endPortal.Old == 1 && vars.endPortal.Current == 0)
         return settings["l"+vars.level.Current];
 }

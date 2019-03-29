@@ -31,19 +31,21 @@ init {
         throw new Exception("[Autosplitter] Can't find signature");
 
     vars.start = new MemoryWatcher<byte>(ptr+0x44);
-    vars.level = new MemoryWatcher<byte>(ptr+0x8A);
-    vars.tiles = new MemoryWatcher<byte>(ptr+0x8C);
+
+    vars.watchers = new MemoryWatcherList() {
+        (vars.level = new MemoryWatcher<byte>(ptr+0x8A)),
+        (vars.tiles = new MemoryWatcher<byte>(ptr+0x8C))
+    };
     
-    refreshRate = 60;
+    refreshRate = 200/3d;
 }
 
 update {
-    vars.start.Update(game);
-    vars.level.Update(game);
-    vars.tiles.Update(game);
+    vars.watchers.UpdateAll(game);
 }
 
 start {
+    vars.start.Update(game);
     return vars.start.Old == 0 && vars.start.Current != 0;
 }
 

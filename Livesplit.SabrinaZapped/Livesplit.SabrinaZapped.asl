@@ -1,9 +1,9 @@
-state("bgb") {}
-state("bgb64") {}
-state("emuhawk") {}
-state("gambatte") {}
-state("gambatte_qt") {}
 state("gambatte_qt_nonpsr") {}
+state("gambatte_qt") {}
+state("gambatte") {}
+state("emuhawk") {}
+state("bgb64") {}
+state("bgb") {}
 
 startup {
     refreshRate = 0.5;
@@ -54,17 +54,17 @@ init {
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
     
-    vars.aniLeft = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x9FB)) : new MemoryWatcher<byte>(ptr+0x83);
-
-    vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA0A)) : new MemoryWatcher<byte>(ptr+0x92);
-    vars.pause = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA26)) : new MemoryWatcher<byte>(ptr+0xAE);
+    vars.watchers = new MemoryWatcherList() {
+        (vars.aniLeft = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x9FB)) : new MemoryWatcher<byte>(ptr+0x83)),
+        (vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA0A)) : new MemoryWatcher<byte>(ptr+0x92)),
+        (vars.pause = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA26)) : new MemoryWatcher<byte>(ptr+0xAE))
+    };
     
-    refreshRate = 60;
+    refreshRate = 200/3d;
 }
 
 update {
-    vars.level.Update(game);
-    vars.pause.Update(game);
+    vars.watchers.UpdateAll(game);
 }
 
 start {
@@ -72,12 +72,8 @@ start {
 }
 
 split {
-    if(vars.level.Current == 19) {
-        vars.aniLeft.Update(game);
-        if(vars.aniLeft.Old == 0 && vars.aniLeft.Current == 1)
-            return settings["l19"];
-    } else if((vars.pause.Old == 0 && vars.pause.Current == 128) ||
-              (vars.pause.Old == 8 && vars.pause.Current == 136)) {
+    if(vars.level.Current == 19)
+        return settings["l19"] && vars.aniLeft.Old == 0 && vars.aniLeft.Current == 1;
+    else if((vars.pause.Old == 0 && vars.pause.Current == 128) || (vars.pause.Old == 8 && vars.pause.Current == 136))
         return settings["l"+vars.level.Current];
-    }
 }
