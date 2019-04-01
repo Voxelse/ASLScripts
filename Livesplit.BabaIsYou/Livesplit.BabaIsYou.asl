@@ -1,13 +1,14 @@
 state("Baba Is You") {}
 
 startup {
-    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}};
+    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}, {0x415000, "GR"}};
 
     vars.addresses = new Dictionary<string, List<int>>() {
         {"GF", new List<int>{0x34A974, 0x34BBC4, 0x34C50C, 0x355E98}},
         {"GJ", new List<int>{0x34C9BC, 0x34DC0C, 0x34E554, 0x357EE8}},
         {"GK", new List<int>{0x34D9D4, 0x34EC24, 0x34F56C, 0x358EF8}},
-        {"GQ", new List<int>{0x362BFC, 0x363E4C, 0x364794, 0x36E120}}
+        {"GQ", new List<int>{0x362BFC, 0x363E4C, 0x364794, 0x36E120}},
+        {"GR", new List<int>{0x364E1C, 0x36606C, 0x3669B4, 0x370378}}
     };
 
     settings.Add("ld", false, "Split at every level done");
