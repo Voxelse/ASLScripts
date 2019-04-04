@@ -30,9 +30,8 @@ init {
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.start = new MemoryWatcher<byte>(ptr+0x44);
-
     vars.watchers = new MemoryWatcherList() {
+        (vars.start = new MemoryWatcher<byte>(ptr+0x44)),
         (vars.level = new MemoryWatcher<byte>(ptr+0x8A)),
         (vars.tiles = new MemoryWatcher<byte>(ptr+0x8C))
     };
@@ -45,7 +44,6 @@ update {
 }
 
 start {
-    vars.start.Update(game);
     return vars.start.Old == 0 && vars.start.Current != 0;
 }
 
