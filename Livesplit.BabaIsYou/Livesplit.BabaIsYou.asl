@@ -129,8 +129,8 @@ startup {
             Tuple.Create((short)260, "C: Passing Through"),
             Tuple.Create((short)271, "D: Salvage"),
             Tuple.Create((short)268, "E: Insulation"),
-            Tuple.Create((short)193, "Extra 1: Crumbling Floor")}
-            Tuple.Create((short)54, "Extra 2: Skull House"),
+            Tuple.Create((short)193, "Extra 1: Crumbling Floor"),
+            Tuple.Create((short)54, "Extra 2: Skull House")}
         }, {
             Tuple.Create((short)87, "6.Rocket Trip"), new HashSet<Tuple<short, string>> {
             Tuple.Create((short)9, "1: Empty"),
