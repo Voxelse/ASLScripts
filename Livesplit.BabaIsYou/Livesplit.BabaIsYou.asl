@@ -1,21 +1,22 @@
 state("Baba Is You") {}
 
 startup {
-    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}, {0x415000, "GR"}};
+    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}, {0x415000, "GR"}, {0x416000, "GV"}};
 
     vars.addresses = new Dictionary<string, List<int>>() {
         {"GF", new List<int>{0x34A974, 0x34BBC4, 0x34C50C, 0x355E98}},
         {"GJ", new List<int>{0x34C9BC, 0x34DC0C, 0x34E554, 0x357EE8}},
         {"GK", new List<int>{0x34D9D4, 0x34EC24, 0x34F56C, 0x358EF8}},
         {"GQ", new List<int>{0x362BFC, 0x363E4C, 0x364794, 0x36E120}},
-        {"GR", new List<int>{0x364E1C, 0x36606C, 0x3669B4, 0x370378}}
+        {"GR", new List<int>{0x364E1C, 0x36606C, 0x3669B4, 0x370378}},
+        {"GV", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x3713F0}}
     };
 
     settings.Add("ld", false, "Split at every level done");
 
     settings.Add("cl", true, "Clear Worlds");
     vars.clearCount = new Dictionary<short, byte>() {
-        {177, 15-8}, {207, 18-8}, {206, 10-6}, {16, 20-7}, {169, 20-9}, {87, 15-8}, {180, 12-6}, {179, 15-9}, {182, 16-9}, {232, 9-6}, {282, 7-4}
+        {177, 15-8}, {207, 18-8}, {206, 10-6}, {16, 20-7}, {169, 21-9}, {87, 14-8}, {180, 12-6}, {179, 15-9}, {182, 16-9}, {232, 9-6}, {282, 7-4}
     };
     
     settings.Add("cp", true, "Complete Worlds");
@@ -118,9 +119,9 @@ startup {
             Tuple.Create((short)151, "7: Concrete Goals"),
             Tuple.Create((short)98, "8: Victory In The Open"),
             Tuple.Create((short)191, "9: Moving Floor"),
-            Tuple.Create((short)248, "10: Supermarket"),
-            Tuple.Create((short)67, "11: Lock The Door"),
-            Tuple.Create((short)54, "12: Skull House"),
+            Tuple.Create((short)315, "10: Lovely House"),
+            Tuple.Create((short)248, "11: Supermarket"),
+            Tuple.Create((short)67, "12: Lock The Door"),
             Tuple.Create((short)28, "13: Factory"),
             Tuple.Create((short)233, "14: Tiny Pasture"),
             Tuple.Create((short)50, "A: Nearly"),
@@ -129,6 +130,7 @@ startup {
             Tuple.Create((short)271, "D: Salvage"),
             Tuple.Create((short)268, "E: Insulation"),
             Tuple.Create((short)193, "Extra 1: Crumbling Floor")}
+            Tuple.Create((short)54, "Extra 2: Skull House"),
         }, {
             Tuple.Create((short)87, "6.Rocket Trip"), new HashSet<Tuple<short, string>> {
             Tuple.Create((short)9, "1: Empty"),
@@ -144,8 +146,7 @@ startup {
             Tuple.Create((short)115, "11: Heavy Words"),
             Tuple.Create((short)82, "12: Guardians"),
             Tuple.Create((short)217, "13: Sky Hold"),
-            Tuple.Create((short)315, "Extra 1: Eye Of A Needle"),
-            Tuple.Create((short)125, "Extra 2: Heavy Cloud")}
+            Tuple.Create((short)125, "Extra 1: Heavy Cloud")}
         }, {
             Tuple.Create((short)180, "7.Flower Garden"), new HashSet<Tuple<short, string>> {
             Tuple.Create((short)59, "1: Condition"),
