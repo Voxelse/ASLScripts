@@ -1,7 +1,7 @@
 state("Baba Is You") {}
 
 startup {
-    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}, {0x415000, "GR"}, {0x416000, "GV"}};
+    vars.versions = new Dictionary<int, string>() {{0x402000, "GF"}, {0x404000, "GJ"}, {0x405000, "GK"}, {0x412000, "GQ"}, {0x415000, "GR"}, {0x416000, "GU_2"}, {0x512000, "GV"}};
 
     vars.addresses = new Dictionary<string, List<int>>() {
         {"GF", new List<int>{0x34A974, 0x34BBC4, 0x34C50C, 0x355E98}},
@@ -9,7 +9,8 @@ startup {
         {"GK", new List<int>{0x34D9D4, 0x34EC24, 0x34F56C, 0x358EF8}},
         {"GQ", new List<int>{0x362BFC, 0x363E4C, 0x364794, 0x36E120}},
         {"GR", new List<int>{0x364E1C, 0x36606C, 0x3669B4, 0x370378}},
-        {"GV", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x3713F0}}
+        {"GU_2", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x3713F0}},
+        {"GV", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x46D3F0}}
     };
 
     settings.Add("ld", false, "Split at every level done");
@@ -163,10 +164,10 @@ startup {
             Tuple.Create((short)127, "Extra 2: Secret Garden")}
         }, {
             Tuple.Create((short)179, "8.Volcanic Cavern"), new HashSet<Tuple<short, string>> {
-            Tuple.Create((short)95, "1: Mouse Hole"),
-            Tuple.Create((short)148, "2: Tour"),
-            Tuple.Create((short)47, "3: Peril At Every Turn"),
-            Tuple.Create((short)266, "4: Fireplace"),
+            Tuple.Create((short)148, "1 : Tour"),
+            Tuple.Create((short)47, "2: Peril At Every Turn"),
+            Tuple.Create((short)266, "3: Pillarwork"),
+            Tuple.Create((short)95, "4: Mouse Hole"),
             Tuple.Create((short)146, "5: Torn Apart"),
             Tuple.Create((short)46, "6: Vital Ingredients"),
             Tuple.Create((short)270, "7: Backstage"),
@@ -246,7 +247,7 @@ startup {
             Tuple.Create((short)262, "4: Collaborative Effort"),
             Tuple.Create((short)265, "5: Living Lands"),
             Tuple.Create((short)274, "Extra 1: Priority Lane"),
-            Tuple.Create((short)75, "Extra 2: Secure Cottage"),
+            Tuple.Create((short)75, "Extra 2: Fireplace"),
             Tuple.Create((short)222, "Extra 3: Hidden Relic"),
             Tuple.Create((short)223, "Extra 4: Buried Treasure"),
             Tuple.Create((short)135, "Extra 5: Endless Corridor")}
