@@ -163,10 +163,10 @@ startup {
             Tuple.Create((short)127, "Extra 2: Secret Garden")}
         }, {
             Tuple.Create((short)179, "8.Volcanic Cavern"), new HashSet<Tuple<short, string>> {
-            Tuple.Create((short)95, "1: Mouse Hole"),
-            Tuple.Create((short)148, "2: Tour"),
-            Tuple.Create((short)47, "3: Peril At Every Turn"),
-            Tuple.Create((short)266, "4: Fireplace"),
+            Tuple.Create((short)148, "1: Tour"),
+            Tuple.Create((short)47, "2: Peril At Every Turn"),
+            Tuple.Create((short)266, "3: Pillarwork"),
+            Tuple.Create((short)95, "4: Mouse Hole"),
             Tuple.Create((short)146, "5: Torn Apart"),
             Tuple.Create((short)46, "6: Vital Ingredients"),
             Tuple.Create((short)270, "7: Backstage"),
@@ -226,7 +226,7 @@ startup {
             Tuple.Create((short)196, "Extra 2: Hazel Den"),
             Tuple.Create((short)-1, "Extra 3: Baba Has Keke"), //n1
             Tuple.Create((short)293, "Secret: Huh?"),
-            Tuple.Create((short)294, "Secret: A Prize Well Earned"),
+            Tuple.Create((short)286, "Secret: Getting Together"),
             Tuple.Create((short)306, "Secret: Orb")}
         }, {
             Tuple.Create((short)282, "12. ABC"), new HashSet<Tuple<short, string>> {
@@ -246,7 +246,7 @@ startup {
             Tuple.Create((short)262, "4: Collaborative Effort"),
             Tuple.Create((short)265, "5: Living Lands"),
             Tuple.Create((short)274, "Extra 1: Priority Lane"),
-            Tuple.Create((short)75, "Extra 2: Secure Cottage"),
+            Tuple.Create((short)75, "Extra 2: Fireplace"),
             Tuple.Create((short)222, "Extra 3: Hidden Relic"),
             Tuple.Create((short)223, "Extra 4: Buried Treasure"),
             Tuple.Create((short)135, "Extra 5: Endless Corridor")}
@@ -270,7 +270,8 @@ startup {
             Tuple.Create((short)277, "15: The Box"),
             Tuple.Create((short)299, "Extra 1: Hidden Path"),
             Tuple.Create((short)188, "Extra 2: Triplets"),
-            Tuple.Create((short)286, "Extra 3: Getting Together")}
+            Tuple.Create((short)294, "Extra 3: A Prize Well Earned"),
+            Tuple.Create((short)320, "Extra 4: Another Way)}
         }, {
             Tuple.Create((short)304, "15. Center"), new HashSet<Tuple<short, string>> {
             // Tuple.Create((short)283, "Enter Center"),
