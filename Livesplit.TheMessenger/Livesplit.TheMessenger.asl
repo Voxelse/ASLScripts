@@ -4,8 +4,8 @@ startup {
     refreshRate = 0.5;
 
     settings.Add("Levels", true, "Levels");
-    settings.Add("Checkpoints", false, "Checkpoints");
     settings.Add("Inventory", false, "Inventory");
+    settings.Add("Checkpoints", false, "Checkpoints");
     settings.Add("RoomTimer", false, "Individual Room Timer");
     settings.Add("ILStart", false, "Start for IL Practice");
 
@@ -195,6 +195,7 @@ startup {
     settings.Add("Inventory_58", false, "Sun Crest"); //74 both
     settings.Add("Inventory_59", false, "Moon Crest");
     settings.Add("Inventory_51", false, "Demon King's Crown");
+    settings.Add("Unlock_Windmill", false, "Windmill Shuriken");
 
     settings.CurrentDefaultParent = "Abilities";
     settings.Add("Abilities8", false, "Abilities 8bit");
@@ -342,6 +343,8 @@ startup {
         vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount = 0;
         vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount = 0;
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount = 0;
+        vars.oldUseWindmill = vars.curUseWindmill = false;
+        vars.windmillUnlocked = false;
 
         vars.visitedLevels = new HashSet<string>();
         vars.savedCheckpoints = new HashSet<string>();
@@ -376,6 +379,8 @@ startup {
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount;
         vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x70)+0x18);
         vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x70, 0x10});
+        vars.oldUseWindmill = vars.curUseWindmill;
+        vars.curUseWindmill = proc.ReadValue<bool>(progressionManagerPtr+0xC2);
         
         IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerPtr, new int[] {vars.instructionsOffset[2], 0x0, 0x48, 0x20});
         vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
@@ -604,6 +609,11 @@ split {
     if(vars.oldCutscenesPlayedCount != vars.currentCutscenesPlayedCount) {
         string cutsceneSplit = "Cutscene_"+vars.ReadString(game, vars.cutscenesPlayedAddr, vars.currentCutscenesPlayedCount);
         return settings.ContainsKey(cutsceneSplit) && settings[cutsceneSplit];
+    }
+
+    if(vars.curUseWindmill && !vars.oldUseWindmill && !vars.windmillUnlocked) {
+        vars.windmillUnlocked = true;
+        return settings["Unlock_Windmill"];
     }
 }
 
