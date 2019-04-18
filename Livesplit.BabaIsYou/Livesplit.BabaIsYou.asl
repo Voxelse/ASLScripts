@@ -2,7 +2,8 @@ state("Baba Is You") {}
 
 startup {
     vars.versions = new Dictionary<int, Tuple<string, List<int>>>() {
-        {0x5CB658C4, Tuple.Create("GX", new List<int>{0x366E8C, 0x3680DC, 0x368A24, 0x46E428})},  //GX  16/042019  – 23:21:20
+        {0x5CB7E6C7, Tuple.Create("GY", new List<int>{0x366E8C, 0x3680DC, 0x368A24, 0x46E428})},  //GY  18/04/2019 – 03:38:40
+        {0x5CB658C4, Tuple.Create("GX", new List<int>{0x366E8C, 0x3680DC, 0x368A24, 0x46E428})},  //GX  16/04/2019 – 23:21:20
         {0x5CAFC63B, Tuple.Create("GW", new List<int>{0x366E74, 0x3680C4, 0x368A0C, 0x46E408})},  //GW  12/04/2019 - 00:28:16
         {0x5CABBF04, Tuple.Create("GV", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x46D3F0})},  //GV  08/04/2019 – 22:43:34
         {0x5CA68278, Tuple.Create("GU", new List<int>{0x365E5C, 0x3670AC, 0x3679F4, 0x3713F0})},  //GU? 04/04/2019 – 22:40:23
