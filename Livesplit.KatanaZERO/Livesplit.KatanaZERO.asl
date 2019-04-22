@@ -1,6 +1,11 @@
-state ("Katana Zero") {
+state ("Katana Zero", "Steam") {
     int map : 0x1BC5898;
     int state : 0x19B4640, 0x0, 0x3C, 0x8, 0x80;
+}
+
+state ("Katana Zero", "GOG") {
+    int map : 0x1BC4858;
+    int state : 0x19B3600, 0x0, 0x3C, 0x8, 0x80;
 }
 
 startup {
@@ -39,7 +44,6 @@ startup {
     settings.Add("2_16", false, "Fight 3");
     settings.Add("2_17", false, "Fight 4");
     settings.Add("2_18", false, "Fight 5");
-
 
     settings.CurrentDefaultParent = "tape3";
     settings.Add("3_149", false, "Dossier");
@@ -180,6 +184,13 @@ startup {
     vars.startKill = false;
 }
 
+init {
+    if(modules.First().ModuleMemorySize == 0x1CD4000)
+        version = "Steam";
+    if(modules.First().ModuleMemorySize == 0x1CD3000)
+        version = "GOG";
+}
+
 start {
     if(current.map != 6 || (current.map != old.map)) vars.startKill = false;
 
@@ -190,7 +201,6 @@ start {
             return true;
     }
 }
-
 
 split {
     if(old.map != current.map) {
