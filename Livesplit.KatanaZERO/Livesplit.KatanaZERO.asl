@@ -167,14 +167,15 @@ startup {
 
     settings.CurrentDefaultParent = "tape11";
     settings.Add("fight11", false, "Individual Fights");
-    settings.Add("11_tape", true, "Boss 2 (End)");
+    settings.Add("11_121", true, "Boss 2 (End)");
+    settings.Add("11_128", true, "Secret Boss (Psychotherapy)");
     settings.CurrentDefaultParent = "fight11";
     settings.Add("11_117", false, "Fight 11");
     settings.Add("11_118", false, "Fight 12");
     settings.Add("11_119", false, "Fight 13");
     settings.Add("11_120", false, "Boss 1");
 
-    vars.endTape = new HashSet<string>() {"12_128", "127_132", "127_126", "127_80", "84_126", "143_126", "151_117", "121_122"};
+    vars.endTape = new HashSet<string>() {"12_128", "127_132", "127_126", "127_80", "84_126", "143_126", "151_117"};
     
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.tape = 1;
@@ -185,10 +186,8 @@ startup {
 }
 
 init {
-    if(modules.First().ModuleMemorySize == 0x1CD4000)
-        version = "Steam";
-    if(modules.First().ModuleMemorySize == 0x1CD3000)
-        version = "GOG";
+    if(modules.First().ModuleMemorySize == 0x1CD4000) version = "Steam";
+    if(modules.First().ModuleMemorySize == 0x1CD3000) version = "GOG";
 }
 
 start {
