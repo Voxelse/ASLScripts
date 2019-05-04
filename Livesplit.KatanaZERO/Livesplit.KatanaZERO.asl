@@ -1,11 +1,15 @@
 state ("Katana Zero", "Steam") {
     int map : 0x1BC5898;
+    int statePtr : 0x19B4640, 0x0, 0x3C, 0x8;
     int state : 0x19B4640, 0x0, 0x3C, 0x8, 0x80;
+    int death : 0x19AB170, 0x2C, 0x10, 0x144, 0x10, 0x4, 0xC;
 }
 
 state ("Katana Zero", "GOG") {
     int map : 0x1BC4858;
+    int statePtr : 0x19B3600, 0x0, 0x3C, 0x8;
     int state : 0x19B3600, 0x0, 0x3C, 0x8, 0x80;
+    int death : 0x19AA130, 0x2C, 0x10, 0x144, 0x0, 0x4, 0xC;
 }
 
 startup {
@@ -20,6 +24,9 @@ startup {
     settings.Add("tape9", true, "9 - Sltr.house");
     settings.Add("tape10", true, "10 - Bunker");
     settings.Add("tape11", true, "11 - Bunker Pt.2");
+
+    settings.Add("roomTimer", false, "Individual Room Timer");
+    settings.Add("deathCounter", false, "Death Counter");
 
     settings.CurrentDefaultParent = "tape1";
     settings.Add("fight1", false, "Individual Fights");
@@ -179,15 +186,79 @@ startup {
     
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.tape = 1;
+        vars.deathCounter = 0;
     });
     timer.OnStart += vars.timerResetVars;
 
-    vars.startKill = false;
+    vars.UpdateDeathCounter = (Action<Process, int>)((proc, deathPtr) => {
+        if(vars.deathText == null) {
+            foreach (dynamic component in timer.Layout.Components) {
+                if (component.GetType().Name != "TextComponent") continue;
+                if (component.Settings.Text1 == "Deaths") vars.deathText = component.Settings;
+            }
+            if(vars.deathText == null) vars.deathText = vars.CreateTextComponent("Deaths");
+        }
+        vars.deathText.Text2 = (vars.deathCounter + proc.ReadValue<double>((IntPtr)(deathPtr+0x200+0x10*vars.tape))).ToString();
+    });
+
+    vars.UpdateRoomTimer = (Action<int, int, int>)((oldMap, curMap, curState) => {
+        if(vars.roomTimerCur == null || vars.roomTimerPrev == null) {
+            foreach (dynamic component in timer.Layout.Components) {
+                if (component.GetType().Name != "TextComponent") continue;
+                if (component.Settings.Text1 == "Current Room") vars.roomTimerCur = component.Settings;
+                if (component.Settings.Text1 == "Previous Room") vars.roomTimerPrev = component.Settings;
+            }
+            if(vars.roomTimerCur == null) vars.roomTimerCur = vars.CreateTextComponent("Current Room");
+            if(vars.roomTimerPrev == null) vars.roomTimerPrev = vars.CreateTextComponent("Previous Room");
+            vars.roomTimerPrev.Text2 = "0.00";
+        }
+
+        if(oldMap != curMap)
+            vars.roomTimerPrev.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
+
+        if(curState != 0 && curState != vars.lastStatePtr) {
+            vars.lastStatePtr = curState;
+            vars.roomTimer.Restart();
+        }
+
+        if(curState == 0 && vars.roomTimer.IsRunning) vars.roomTimer.Stop();
+        if(curState != 0 && !vars.roomTimer.IsRunning) vars.roomTimer.Start();
+
+        vars.roomTimerCur.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
+    });
+
+    vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
+        var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
+        dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
+        timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
+        textComponent.Settings.Text1 = name;
+        return textComponent.Settings;
+    });
+
+    vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
+        string minutes = (timeSpan.Minutes > 0)?timeSpan.Minutes+":" : "";
+        string seconds = ((timeSpan.Minutes != 0 && timeSpan.Seconds < 10)?"0"+timeSpan.Seconds:timeSpan.Seconds.ToString())+".";
+        string milliseconds = timeSpan.Milliseconds.ToString("D3").Remove(2);
+        return minutes + seconds + milliseconds;
+    });
 }
 
 init {
     if(modules.First().ModuleMemorySize == 0x1CD4000) version = "Steam";
     if(modules.First().ModuleMemorySize == 0x1CD3000) version = "GOG";
+    
+    vars.startKill = false;
+    vars.tape = 1;
+    vars.deathCounter = 0;
+    vars.deathText = null;
+    vars.roomTimerCur = vars.roomTimerPrev = null;
+    vars.roomTimer = new Stopwatch();
+    vars.lastStatePtr = 0;
+}
+
+update {
+    if(settings["deathCounter"]) vars.UpdateDeathCounter(game, current.death);
+    if(settings["roomTimer"]) vars.UpdateRoomTimer(old.map, current.map, current.statePtr);
 }
 
 start {
@@ -203,8 +274,10 @@ start {
 
 split {
     if(old.map != current.map) {
-        if(vars.endTape.Contains(old.map+"_"+current.map))
+        if(vars.endTape.Contains(old.map+"_"+current.map)) {
+            vars.deathCounter += game.ReadValue<double>((IntPtr)(current.death+0x200+0x10*vars.tape));
             return settings[(vars.tape++)+"_tape"];
+        }
         var split = vars.tape+"_"+old.map;
         return (settings.ContainsKey(split) && settings[split]) || (settings.ContainsKey(split+"_"+current.map) && settings[split+"_"+current.map]);
     }
