@@ -197,7 +197,8 @@ startup {
             if(vars.deathText == null) vars.deathText = vars.CreateTextComponent("Deaths");
         }
 
-        if((oldState != 27 && curState == 27) || (oldState != 1707 && curState == 1707)) vars.deathCounter++;
+        if((oldState != 27 && curState == 27) || (oldState != 1707 && curState == 1707) || (oldState != 837 && curState == 837))
+            vars.deathCounter++;
         
         vars.deathText.Text2 = vars.deathCounter.ToString();
     });
