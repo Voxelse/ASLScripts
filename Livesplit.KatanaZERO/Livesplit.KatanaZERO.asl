@@ -2,14 +2,12 @@ state ("Katana Zero", "Steam") {
     int map : 0x1BC5898;
     int statePtr : 0x19B4640, 0x0, 0x3C, 0x8;
     int state : 0x19B4640, 0x0, 0x3C, 0x8, 0x80;
-    int death : 0x19AB170, 0x2C, 0x10, 0x144, 0x10, 0x4, 0xC;
 }
 
 state ("Katana Zero", "GOG") {
     int map : 0x1BC4858;
     int statePtr : 0x19B3600, 0x0, 0x3C, 0x8;
     int state : 0x19B3600, 0x0, 0x3C, 0x8, 0x80;
-    int death : 0x19AA130, 0x2C, 0x10, 0x144, 0x0, 0x4, 0xC;
 }
 
 startup {
@@ -190,7 +188,7 @@ startup {
     });
     timer.OnStart += vars.timerResetVars;
 
-    vars.UpdateDeathCounter = (Action<Process, int>)((proc, deathPtr) => {
+    vars.UpdateDeathCounter = (Action<int, int>)((oldState, curState) => {
         if(vars.deathText == null) {
             foreach (dynamic component in timer.Layout.Components) {
                 if (component.GetType().Name != "TextComponent") continue;
@@ -198,7 +196,10 @@ startup {
             }
             if(vars.deathText == null) vars.deathText = vars.CreateTextComponent("Deaths");
         }
-        vars.deathText.Text2 = (vars.deathCounter + proc.ReadValue<double>((IntPtr)(deathPtr+0x200+0x10*vars.tape))).ToString();
+
+        if((oldState != 27 && curState == 27) || (oldState != 1707 && curState == 1707)) vars.deathCounter++;
+        
+        vars.deathText.Text2 = vars.deathCounter.ToString();
     });
 
     vars.UpdateRoomTimer = (Action<int, int, int>)((oldMap, curMap, curState) => {
@@ -257,7 +258,7 @@ init {
 }
 
 update {
-    if(settings["deathCounter"]) vars.UpdateDeathCounter(game, current.death);
+    if(settings["deathCounter"]) vars.UpdateDeathCounter(old.state, current.state);
     if(settings["roomTimer"]) vars.UpdateRoomTimer(old.map, current.map, current.statePtr);
 }
 
@@ -274,10 +275,8 @@ start {
 
 split {
     if(old.map != current.map) {
-        if(vars.endTape.Contains(old.map+"_"+current.map)) {
-            vars.deathCounter += game.ReadValue<double>((IntPtr)(current.death+0x200+0x10*vars.tape));
+        if(vars.endTape.Contains(old.map+"_"+current.map))
             return settings[(vars.tape++)+"_tape"];
-        }
         var split = vars.tape+"_"+old.map;
         return (settings.ContainsKey(split) && settings[split]) || (settings.ContainsKey(split+"_"+current.map) && settings[split+"_"+current.map]);
     }
