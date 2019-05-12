@@ -29,9 +29,10 @@ startup {
         {0x5C8B9C84, Tuple.Create("GJ",  new int[] {0x34C9BC, 0x34DC0C, 0x34E554, 0x357EE8})}, //15/03/2019 – 14:26:18
         {0x5C8580CE, Tuple.Create("GF",  new int[] {0x34A974, 0x34BBC4, 0x34C50C, 0x355E98})}  //13/03/2019 – 16:00:20
     };
-
+    
     settings.Add("lv", true, "Split at every level done");
 
+    /*
     settings.Add("en", false, "Enter Worlds");
     settings.Add("ex", false, "Exit Worlds");
 
@@ -52,6 +53,26 @@ startup {
         {264, "13.Depths"},
         {283, "14.Meta"},
         {304, "15.Center"}
+    };
+    */
+    
+    vars.worldIDs = new int[16] {
+        0x6C343033, 
+        0x6C333832, 
+        0x6C343632, 
+        0x6C323832, 
+        0x6C303032, 
+        0x6C323332, 
+        0x6C313832, 
+        0x6C393731,
+        0x6C363031,
+        0x6C373731,
+        0x6C373032,
+        0x6C363032,
+        0x656C3631,
+        0x6C393631,
+        0x656C3738,
+        0x6C303831
     };
 
     int worldCount = -1;
@@ -91,15 +112,16 @@ init {
     version = verInfo.Item1;
 
     vars.level = new StringWatcher(new DeepPointer(verInfo.Item2[0], 0x14, 0x30), 8);
+    vars.levelID = new MemoryWatcher<int>(new DeepPointer(verInfo.Item2[0], 0x14, 0x30));
     vars.end = new MemoryWatcher<int>(new DeepPointer(verInfo.Item2[1]));
     vars.menuId = new MemoryWatcher<int>(new DeepPointer(verInfo.Item2[2]));
     vars.fade = new MemoryWatcher<double>(new DeepPointer(verInfo.Item2[3]));
-
     vars.lastPhase = false;
     vars.worldSplits = new HashSet<string>();
 }
 
 update {
+    vars.levelID.Update(game);
     vars.end.Update(game);
     vars.level.Update(game);
     vars.menuId.Update(game);
@@ -127,10 +149,12 @@ split {
     } else vars.lastPhase = false;
 
     if(vars.level.Current.Equals("198level") && vars.level.Old.Equals("198level")) {
-        if(vars.fade.Old == 32 && vars.fade.Current < 32)
+        if(vars.fade.Old == 33 && vars.fade.Current < 33)
             return settings["tEnd"] || settings["lv"];
     }
 
+    //Every other level finish should split (this is inconsistent on the timing, what I want to fix)
+    /*
     if(!vars.level.Current.Equals(vars.level.Old) && vars.menuId.Old != 6) {
         string oldId = vars.level.Old.Substring(0, vars.level.Old.Length-5);
         string curId = vars.level.Current.Substring(0, vars.level.Current.Length-5);
@@ -148,6 +172,12 @@ split {
                 return settings["lv"];
             }
         }
+    }
+    */
+    
+    //New system
+    if(Array.IndexOf(vars.worldIDs, vars.levelID.Old) == -1 && Array.IndexOf(vars.worldIDs, vars.levelID.Current) != -1){
+        return settings["lv"];
     }
 }
 
