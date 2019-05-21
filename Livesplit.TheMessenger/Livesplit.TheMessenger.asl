@@ -475,10 +475,7 @@ startup {
     });
 
     vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
-        string minutes = (timeSpan.Minutes > 0)?timeSpan.Minutes+":" : "";
-        string seconds = ((timeSpan.Minutes != 0 && timeSpan.Seconds < 10)?"0"+timeSpan.Seconds:timeSpan.Seconds.ToString())+".";
-        string milliseconds = timeSpan.Milliseconds.ToString("D3").Remove(2);
-        return minutes + seconds + milliseconds;
+        return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
     });
 
     vars.timerResetVars = (EventHandler)((s, e) => {
