@@ -1,13 +1,12 @@
 state ("Katana Zero", "Steam") {
-    int map : 0x1BC5898;
-    int statePtr : 0x19B4640, 0x0, 0x3C, 0x8;
-    int state : 0x19B4640, 0x0, 0x3C, 0x8, 0x80;
+    int map : 0x1CF6840;
+    int speedrunData : 0x1CFD4C8, 0x48, 0x48;
+    double timer : 0x1ADC118, 0x2C, 0x10, 0x3B4, 0x40;
+    int statePtr : 0x1AE55E8, 0x0, 0x38, 0x8;
 }
 
 state ("Katana Zero", "GOG") {
-    int map : 0x1BC4858;
-    int statePtr : 0x19B3600, 0x0, 0x3C, 0x8;
-    int state : 0x19B3600, 0x0, 0x3C, 0x8, 0x80;
+    //TODO : Add GOG support
 }
 
 startup {
@@ -24,7 +23,6 @@ startup {
     settings.Add("tape11", true, "11 - Bunker Pt.2");
 
     settings.Add("roomTimer", false, "Individual Room Timer");
-    settings.Add("deathCounter", false, "Death Counter");
 
     settings.CurrentDefaultParent = "tape1";
     settings.Add("fight1", false, "Individual Fights");
@@ -103,7 +101,7 @@ startup {
     settings.CurrentDefaultParent = "fight6";
     settings.Add("6_60", false, "Fight 1");
     settings.Add("6_61", false, "Fight 2");
-    settings.Add("6_62_63", false, "Fight 3");
+    settings.Add("6_62", false, "Fight 3");
     settings.Add("6_63", false, "Fight 4");
     settings.Add("6_64", false, "Fight 5");
     settings.Add("6_65", false, "Fight 6");
@@ -172,61 +170,38 @@ startup {
 
     settings.CurrentDefaultParent = "tape11";
     settings.Add("fight11", false, "Individual Fights");
-    settings.Add("11_121", true, "Boss 2 (End)");
-    settings.Add("11_128", true, "Secret Boss (Psychotherapy)");
+    settings.Add("11_121", true, "Boss Second Phase (End)");
+    settings.Add("11_128", false, "Psychotherapy Boss (All Achievements End)");
     settings.CurrentDefaultParent = "fight11";
     settings.Add("11_117", false, "Fight 11");
     settings.Add("11_118", false, "Fight 12");
     settings.Add("11_119", false, "Fight 13");
-    settings.Add("11_120", false, "Boss 1");
-
-    vars.endTape = new HashSet<string>() {"12_128", "127_132", "127_126", "127_80", "84_126", "143_126", "151_117"};
-    
-    vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.tape = 1;
-        vars.deathCounter = 0;
-    });
-    timer.OnStart += vars.timerResetVars;
-
-    vars.UpdateDeathCounter = (Action<int, int>)((oldState, curState) => {
-        if(vars.deathText == null) {
-            foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name != "TextComponent") continue;
-                if (component.Settings.Text1 == "Deaths") vars.deathText = component.Settings;
-            }
-            if(vars.deathText == null) vars.deathText = vars.CreateTextComponent("Deaths");
-        }
-
-        if(oldState != curState && (curState == 27 || curState == 1707 || curState == 837 || (oldState != 27 && oldState != 29 && curState == 30)))
-            vars.deathCounter++;
-        
-        vars.deathText.Text2 = vars.deathCounter.ToString();
-    });
+    settings.Add("11_120", false, "Boss First Phase");
 
     vars.UpdateRoomTimer = (Action<int, int, int>)((oldMap, curMap, curState) => {
-        if(vars.roomTimerCur == null || vars.roomTimerPrev == null) {
+        if(vars.roomTimerCurText == null || vars.roomTimerPrevText == null) {
             foreach (dynamic component in timer.Layout.Components) {
                 if (component.GetType().Name != "TextComponent") continue;
-                if (component.Settings.Text1 == "Current Room") vars.roomTimerCur = component.Settings;
-                if (component.Settings.Text1 == "Previous Room") vars.roomTimerPrev = component.Settings;
+                if (component.Settings.Text1 == "Current Room") vars.roomTimerCurText = component.Settings;
+                if (component.Settings.Text1 == "Previous Room") vars.roomTimerPrevText = component.Settings;
             }
-            if(vars.roomTimerCur == null) vars.roomTimerCur = vars.CreateTextComponent("Current Room");
-            if(vars.roomTimerPrev == null) vars.roomTimerPrev = vars.CreateTextComponent("Previous Room");
-            vars.roomTimerPrev.Text2 = "0.00";
+            if(vars.roomTimerCurText == null) vars.roomTimerCurText = vars.CreateTextComponent("Current Room");
+            if(vars.roomTimerPrevText == null) vars.roomTimerPrevText = vars.CreateTextComponent("Previous Room");
+            vars.roomTimerPrevText.Text2 = "0.00";
         }
 
         if(oldMap != curMap)
-            vars.roomTimerPrev.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
+            vars.roomTimerPrevText.Text2 = vars.FormatTimer(vars.roomTimerSW.Elapsed);
 
         if(curState != 0 && curState != vars.lastStatePtr) {
             vars.lastStatePtr = curState;
-            vars.roomTimer.Restart();
+            vars.roomTimerSW.Restart();
         }
 
-        if(curState == 0 && vars.roomTimer.IsRunning) vars.roomTimer.Stop();
-        if(curState != 0 && !vars.roomTimer.IsRunning) vars.roomTimer.Start();
+        if(curState == 0 && vars.roomTimerSW.IsRunning) vars.roomTimerSW.Stop();
+        if(curState != 0 && !vars.roomTimerSW.IsRunning) vars.roomTimerSW.Start();
 
-        vars.roomTimerCur.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
+        vars.roomTimerCurText.Text2 = vars.FormatTimer(vars.roomTimerSW.Elapsed);
     });
 
     vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
@@ -240,48 +215,71 @@ startup {
     vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
         return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
     });
+
+    vars.InitVars = (Action)(() => {
+        vars.tape = 11;
+        vars.nextLevelTimerOld = vars.nextLevelTimerCur = -1;
+        vars.currentLevelTimerOld = vars.currentLevelTimerCur = -1;
+    });
 }
 
 init {
-    if(modules.First().ModuleMemorySize == 0x1CD4000) version = "Steam";
-    if(modules.First().ModuleMemorySize == 0x1CD3000) version = "GOG";
+    switch (modules.First().ModuleMemorySize) {
+        case 0x1E0C000: version = "Steam"; break;
+        // case 0x1CD3000: version = "GOG"; break;
+    }
+
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.InitVars();
+
+        while(vars.tape > 1) {
+            if(game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*vars.tape)) != -1)
+                break;
+            --vars.tape;
+        }
+    });
+    timer.OnStart += vars.timerResetVars;
     
-    vars.startKill = false;
-    vars.tape = 1;
-    vars.deathCounter = 0;
-    vars.deathText = null;
-    vars.roomTimerCur = vars.roomTimerPrev = null;
-    vars.roomTimer = new Stopwatch();
+    vars.InitVars();
+
+    vars.roomTimerCurText = vars.roomTimerPrevText = null;
+    vars.roomTimerSW = new Stopwatch();
     vars.lastStatePtr = 0;
 }
 
 update {
-    if(settings["deathCounter"]) vars.UpdateDeathCounter(old.state, current.state);
+    vars.currentLevelTimerOld = vars.currentLevelTimerCur;
+    vars.currentLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*vars.tape));
+    vars.nextLevelTimerOld = vars.nextLevelTimerCur;
+    vars.nextLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*(vars.tape+1)));
     if(settings["roomTimer"]) vars.UpdateRoomTimer(old.map, current.map, current.statePtr);
 }
 
 start {
-    if(current.map != 6 || (current.map != old.map)) vars.startKill = false;
-
-    if(current.map == 6 &&  old.state == 0 && current.state == 11) {
-        if(!vars.startKill)
-            vars.startKill = true;
-        else
-            return true;
-    }
+    return old.timer == 0 && current.timer > 0;
 }
 
 split {
-    if(old.map != current.map) {
-        if(vars.endTape.Contains(old.map+"_"+current.map))
-            return settings[(vars.tape++)+"_tape"];
-        var split = vars.tape+"_"+old.map;
-        return (settings.ContainsKey(split) && settings[split]) || (settings.ContainsKey(split+"_"+current.map) && settings[split+"_"+current.map]);
+    if(vars.tape < 11 && vars.nextLevelTimerOld == -1 && vars.nextLevelTimerCur >= 0) {
+        if(settings[(vars.tape++)+"_tape"]) return true;
+    }
+
+    if(old.map != current.map && !(old.map == 62 && current.map == 140)) {
+        string split = string.Concat(vars.tape, "_", old.map);
+        return settings.ContainsKey(split) && settings[split];
     }
 }
 
 reset {
-    return old.map != current.map && current.map <= 4;
+    return (current.map <= 4 && old.map > 4) || (vars.currentLevelTimerCur == -1 && vars.currentLevelTimerOld != -1);
+}
+
+isLoading {
+    return true;
+}
+
+gameTime {
+    return TimeSpan.FromSeconds(current.timer);
 }
 
 shutdown {
