@@ -21,6 +21,7 @@ startup {
     settings.Add("tape9", true, "9 - Sltr.house");
     settings.Add("tape10", true, "10 - Bunker");
     settings.Add("tape11", true, "11 - Bunker Pt.2");
+    settings.Add("12_128", true, "12 - Boss (Psychotherapy)");
 
     settings.Add("roomTimer", false, "Individual Room Timer");
 
@@ -111,7 +112,7 @@ startup {
     settings.Add("7_149", false, "Dossier");
     settings.Add("7_70", false, "\"Boss\"");
     settings.Add("fight7", false, "Individual Fights");
-    settings.Add("7_79", false, "Mask Choice (End Mission)");
+    settings.Add("7_79", false, "Mask Choice (End Misson / Golden Ending End)");
     settings.Add("7_tape", true, "End Tape");
     settings.CurrentDefaultParent = "fight7";
     settings.Add("7_71", false, "Fight 1");
@@ -170,8 +171,7 @@ startup {
 
     settings.CurrentDefaultParent = "tape11";
     settings.Add("fight11", false, "Individual Fights");
-    settings.Add("11_121", true, "Boss Second Phase (End)");
-    settings.Add("11_128", false, "Psychotherapy Boss (All Achievements End)");
+    settings.Add("11_121", true, "Boss Second Phase (All Stages End)");
     settings.CurrentDefaultParent = "fight11";
     settings.Add("11_117", false, "Fight 11");
     settings.Add("11_118", false, "Fight 12");
@@ -217,7 +217,7 @@ startup {
     });
 
     vars.InitVars = (Action)(() => {
-        vars.tape = 11;
+        vars.tape = 12;
         vars.nextLevelTimerOld = vars.nextLevelTimerCur = -1;
         vars.currentLevelTimerOld = vars.currentLevelTimerCur = -1;
     });
@@ -252,6 +252,7 @@ update {
     vars.currentLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*vars.tape));
     vars.nextLevelTimerOld = vars.nextLevelTimerCur;
     vars.nextLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*(vars.tape+1)));
+    
     if(settings["roomTimer"]) vars.UpdateRoomTimer(old.map, current.map, current.statePtr);
 }
 
@@ -260,7 +261,7 @@ start {
 }
 
 split {
-    if(vars.tape < 11 && vars.nextLevelTimerOld == -1 && vars.nextLevelTimerCur >= 0) {
+    if(vars.tape < 12 && vars.nextLevelTimerOld == -1 && vars.nextLevelTimerCur >= 0) {
         if(settings[(vars.tape++)+"_tape"]) return true;
     }
 
