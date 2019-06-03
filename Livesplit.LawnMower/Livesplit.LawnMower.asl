@@ -5,8 +5,7 @@ state("fceux") {}
 startup {
     refreshRate = 0.5;
 
-    settings.Add("trSplit", false, "Stage Splits : transition instead of 100%");
-    settings.Add("udEnd", false, "[Temporary] End Split : \"Well Done\" (UD rules) instead of 100% (SRC rules)");
+    settings.Add("trSplit", false, "Splits: Lawn transition instead of last tile (except Lawn 10)");
     
     for(int lawn = 0; lawn <= 9; lawn++)
         settings.Add("lawn"+lawn, true, "Lawn "+(lawn>8?"":"0")+(lawn+1));
@@ -48,7 +47,7 @@ start {
 }
 
 split {
-    bool needSplit = ((settings["trSplit"] && vars.level.Old != 9) || (settings["udEnd"] && vars.level.Old == 9)) ? (vars.level.Old < vars.level.Current) : (vars.tiles.Old != 0 && vars.tiles.Current == 0);
+    bool needSplit = (settings["trSplit"] && vars.level.Old != 9) ? (vars.level.Old < vars.level.Current) : (vars.tiles.Old != 0 && vars.tiles.Current == 0);
     return needSplit && settings["lawn"+vars.level.Old];
 }
 
