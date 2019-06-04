@@ -1,11 +1,11 @@
-state ("Katana Zero", "Steam") {
-    int map : 0x1CF6840;
-    int speedrunData : 0x1CFD4C8, 0x48, 0x48;
-    double timer : 0x1ADC118, 0x2C, 0x10, 0x3B4, 0x40;
-    int statePtr : 0x1AE55E8, 0x0, 0x38, 0x8;
+state ("Katana Zero", "Steam 1.0.5") {
+    int map : 0x1CF8900;
+    int speedrunData : 0x1CFF588, 0x48, 0x48;
+    double timer : 0x1ADE1D8, 0x2C, 0x10, 0x3B4, 0x40;
+    int statePtr : 0x1AE76A8, 0x0, 0x38, 0x8;
 }
 
-state ("Katana Zero", "GOG") {
+state ("Katana Zero", "GOG 1.0.4") {
     int map : 0x1CF57D0;
     int speedrunData : 0x1CFC458, 0x48, 0x48;
     double timer : 0x1ADB0A8, 0x2C, 0x10, 0x3B4, 0x40;
@@ -228,8 +228,8 @@ startup {
 
 init {
     switch (modules.First().ModuleMemorySize) {
-        case 0x1E0C000: version = "Steam"; break;
-        case 0x1E0B000: version = "GOG"; break;
+        case 0x1E0E000: version = "Steam 1.0.5"; break;
+        case 0x1E0B000: version = "GOG 1.0.4"; break;
     }
 
     vars.timerResetVars = (EventHandler)((s, e) => {
