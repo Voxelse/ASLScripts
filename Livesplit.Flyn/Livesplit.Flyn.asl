@@ -58,11 +58,11 @@ init {
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.relPtr = (int)((long)ptr - (long)modules.First().BaseAddress);
+    int relPtr = (int)((long)ptr - (long)modules.First().BaseAddress);
 
     vars.watchers = new MemoryWatcherList() {
-        (vars.levelId = new MemoryWatcher<int>(new DeepPointer(vars.relPtr, 0x0, 0xEC))),
-        (vars.gameState = new MemoryWatcher<int>(new DeepPointer(vars.relPtr, 0x0, 0xC8, 0x1C)))
+        (vars.levelId = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xEC))),
+        (vars.gameState = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xC8, 0x1C)))
     };
 
     refreshRate = 200/3d;
@@ -77,7 +77,7 @@ start {
 }
 
 split {
-    if(vars.levelId.Current == 49 && vars.gameState.Current == 5) return settings["l49"];
+    if(vars.levelId.Current == 49 && vars.gameState.Changed && vars.gameState.Current == 5) return settings["l49"];
 
     if(!vars.levelId.Changed) return false;
 
