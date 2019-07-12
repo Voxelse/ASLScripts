@@ -26,8 +26,6 @@ startup {
     settings.Add("tape11", true, "11 - Bunker Pt.2");
     settings.Add("12_128", true, "12 - Boss (Psychotherapy)");
 
-    settings.Add("roomTimer", false, "Individual Room Timer");
-
     settings.CurrentDefaultParent = "tape1";
     settings.Add("fight1", false, "Individual Fights");
     settings.Add("1_11", false, "Target (End Mission)");
@@ -72,6 +70,10 @@ startup {
     settings.Add("4_32", false, "Fight 4 (End Mission)");
     settings.Add("4_tape", true, "End Tape");
     settings.CurrentDefaultParent = "fight4";
+    settings.Add("4_31", false, "Empty 1");
+    settings.Add("4_33", false, "Empty 2");
+    settings.Add("4_37", false, "Empty 3");
+    settings.Add("4_39", false, "Empty 4");
     settings.Add("4_41", false, "Target");
     settings.Add("4_40", false, "Fight 1");
     settings.Add("4_38", false, "Fight 2");
@@ -180,50 +182,6 @@ startup {
     settings.Add("11_118", false, "Fight 12");
     settings.Add("11_119", false, "Fight 13");
     settings.Add("11_120", false, "Boss First Phase");
-
-    vars.UpdateRoomTimer = (Action<int, int, int>)((oldMap, curMap, curState) => {
-        if(vars.roomTimerCurText == null || vars.roomTimerPrevText == null) {
-            foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name != "TextComponent") continue;
-                if (component.Settings.Text1 == "Current Room") vars.roomTimerCurText = component.Settings;
-                if (component.Settings.Text1 == "Previous Room") vars.roomTimerPrevText = component.Settings;
-            }
-            if(vars.roomTimerCurText == null) vars.roomTimerCurText = vars.CreateTextComponent("Current Room");
-            if(vars.roomTimerPrevText == null) vars.roomTimerPrevText = vars.CreateTextComponent("Previous Room");
-            vars.roomTimerPrevText.Text2 = "0.00";
-        }
-
-        if(oldMap != curMap)
-            vars.roomTimerPrevText.Text2 = vars.FormatTimer(vars.roomTimerSW.Elapsed);
-
-        if(curState != 0 && curState != vars.lastStatePtr) {
-            vars.lastStatePtr = curState;
-            vars.roomTimerSW.Restart();
-        }
-
-        if(curState == 0 && vars.roomTimerSW.IsRunning) vars.roomTimerSW.Stop();
-        if(curState != 0 && !vars.roomTimerSW.IsRunning) vars.roomTimerSW.Start();
-
-        vars.roomTimerCurText.Text2 = vars.FormatTimer(vars.roomTimerSW.Elapsed);
-    });
-
-    vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
-        var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
-        dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
-        timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
-        textComponent.Settings.Text1 = name;
-        return textComponent.Settings;
-    });
-
-    vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
-        return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
-    });
-
-    vars.InitVars = (Action)(() => {
-        vars.tape = 12;
-        vars.nextLevelTimerOld = vars.nextLevelTimerCur = -1;
-        vars.currentLevelTimerOld = vars.currentLevelTimerCur = -1;
-    });
 }
 
 init {
@@ -233,8 +191,7 @@ init {
     }
 
     vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.InitVars();
-
+        vars.tape = 12;
         while(vars.tape > 1) {
             if(game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*vars.tape)) != -1)
                 break;
@@ -242,12 +199,10 @@ init {
         }
     });
     timer.OnStart += vars.timerResetVars;
-    
-    vars.InitVars();
 
-    vars.roomTimerCurText = vars.roomTimerPrevText = null;
-    vars.roomTimerSW = new Stopwatch();
-    vars.lastStatePtr = 0;
+    vars.tape = 12;
+    vars.nextLevelTimerOld = vars.nextLevelTimerCur = -1;
+    vars.currentLevelTimerOld = vars.currentLevelTimerCur = -1;
 }
 
 update {
@@ -255,8 +210,6 @@ update {
     vars.currentLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*vars.tape));
     vars.nextLevelTimerOld = vars.nextLevelTimerCur;
     vars.nextLevelTimerCur = game.ReadValue<double>((IntPtr)(current.speedrunData+0x200+0x10*(vars.tape+1)));
-    
-    if(settings["roomTimer"]) vars.UpdateRoomTimer(old.map, current.map, current.statePtr);
 }
 
 start {
