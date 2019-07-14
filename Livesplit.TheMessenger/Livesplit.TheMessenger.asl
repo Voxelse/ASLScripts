@@ -331,7 +331,7 @@ startup {
 
     vars.scanLevelManager = new SigScanTarget(0, "0F B6 00 85 C0 0F 85 ?? 00 00 00 48 8D 4D 30 48 83 EC 20");
     vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
-    vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 57 41 56 41 57 48 83 EC 10 48 8B F9 48 8B F2 83 3E 00 48 8B 46 50 48 63 57 28");
+    vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
     vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
@@ -520,7 +520,7 @@ init {
         throw new Exception("[Autosplitter] Can't find signature");
 
     vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x7) == 0x53;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xA8, -0x93, 0x00} : new int[] {0x136, 0x6E, 0xA6, -0xAC, 0x00};
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0} : new int[] {0x136, 0x6E, 0x0, -0xAC, 0x0};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
     vars.quarbleUIOffset = 0x0;
