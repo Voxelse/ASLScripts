@@ -1,9 +1,10 @@
-state ("TheMessenger") {} //Need to replace custom ReadPointers to 64 bits DeepPointers when they will be supported
+state ("TheMessenger") {} // Need to find why the game is sometimes using 32bit pointers on 64bit versions in order to simplify the pointers updates
 
 startup {
     refreshRate = 0.5;
 
     settings.Add("Levels", true, "Levels");
+    settings.Add("LevelsDLC1", true, "Levels (Picnic Panic)");
     settings.Add("Inventory", false, "Inventory");
     settings.Add("Checkpoints", false, "Checkpoints");
     settings.Add("RoomTimer", false, "Individual Room Timer");
@@ -30,6 +31,12 @@ startup {
     settings.Add("14_CorruptedFuture", true, "Corrupted Future");
     settings.Add("11_B_MusicBox", true, "Music Box");
     settings.Add("Ending", true, "Ending");
+
+    settings.CurrentDefaultParent = "LevelsDLC1";
+    settings.Add("15_Surf", true, "Open Sea");
+    settings.Add("16_Beach", true, "Voodkin Shore");
+    settings.Add("17_Volcano", true, "Fire Mountain");
+    settings.Add("18_Volcano_Chase", true, "Voodoo Heart");
 
     settings.CurrentDefaultParent = "01_NinjaVillage";
     settings.Add("Cutscene_FutureMessengerCutscene", false, "Future Messenger Cutscene");
@@ -134,6 +141,25 @@ startup {
     settings.CurrentDefaultParent = "Ending";
     settings.Add("Level_Ending", false, "First Enter Level");
     settings.Add("Boss_Ending", true, "Beat Mask");
+
+    settings.CurrentDefaultParent = "15_Surf";
+    settings.Add("Level_15_Surf", true, "First Enter Level");
+    settings.Add("Boss_15_Surf", false, "Octo Last Hit");
+    settings.Add("Cutscene_SurfBossIntroCutscene", false, "Octo Intro Fight");
+
+    settings.CurrentDefaultParent = "16_Beach";
+    settings.Add("Level_16_Beach", true, "First Enter Level");
+    settings.Add("Boss_16_Beach", false, "Totem Last Hit");
+    settings.Add("Cutscene_TotemBossIntroCutscene", false, "Totem Intro Fight");
+
+    settings.CurrentDefaultParent = "17_Volcano";
+    settings.Add("Level_17_Volcano", true, "First Enter Level");
+
+    settings.CurrentDefaultParent = "18_Volcano_Chase";
+    settings.Add("Level_18_Volcano_Chase", true, "First Enter Level");
+    settings.Add("Boss_18_Volcano_Chase", true, "Beat Barma");
+    settings.Add("Cutscene_RaceWinCutscene", false, "Race Win Cutscene");
+    settings.Add("Cutscene_StartFinalPPBossCutscene", false, "Barma Intro Fight");
 
     settings.CurrentDefaultParent = "Checkpoints";
     settings.Add("Checkpoint_02_AutumnHills", false, "Autumn Hills");
@@ -333,6 +359,7 @@ startup {
     vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
     vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
     vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
+    //DLCManager 00 48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
     vars.ResetVars = (Action)(() => {
@@ -365,24 +392,24 @@ startup {
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
         vars.oldSceneName = vars.currentSceneName;
-        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerPtr, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
+        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerSig, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
         if(vars.currentSceneName == null) vars.currentSceneName = "";
 
-        IntPtr progressionManagerPtr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {vars.instructionsOffset[1], 0x0});
+        vars.progressionManagerPtr = vars.ReadPointers(proc, vars.progressionManagerSig, new int[] {vars.instructionsOffset[1], 0x0});
         vars.oldCheckpointIndex = vars.currentCheckpointIndex;
-        vars.currentCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x30)+0x38);
+        vars.currentCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x30)+0x38);
         vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount;
-        vars.currentBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x48)+0x18);
+        vars.currentBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x60)+0x18);
+        vars.cutscenesPlayedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x78, 0x10});
         vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount;
-        vars.currentCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x58)+0x18);
-        vars.cutscenesPlayedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x58, 0x10});
+        vars.currentCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x78)+0x18);
         vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount;
-        vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, progressionManagerPtr+0x70)+0x18);
-        vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, progressionManagerPtr, new int[] {0x70, 0x10});
+        vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x90)+0x18);
+        vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x90, 0x10});
         vars.oldUseWindmill = vars.curUseWindmill;
-        vars.curUseWindmill = proc.ReadValue<bool>(progressionManagerPtr+0xC2);
+        vars.curUseWindmill = proc.ReadValue<bool>((IntPtr)vars.progressionManagerPtr+0xEB);
         
-        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerPtr, new int[] {vars.instructionsOffset[2], 0x0, 0x48, 0x20});
+        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerSig, new int[] {vars.instructionsOffset[2], 0x0, 0x78, 0x20});
         vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
         vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
         vars.oldInventorySize = vars.currentInventorySize;
@@ -391,11 +418,11 @@ startup {
         vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
 
         if(vars.quarbleUIOffset == 0x0) {
-            if(vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
-            if(vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x58, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x58;
+            if(vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
+            if(vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x58, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x58;
         }
         if(vars.quarbleUIOffset != 0x0) {
-            var quarbleUI = vars.ReadPointers(proc, vars.UIManagerPtr, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, vars.quarbleUIOffset, 0x10, 0x20});
+            var quarbleUI = vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, vars.quarbleUIOffset, 0x10, 0x20});
             vars.quarbleAnim = vars.ReadPointer(proc, quarbleUI+0x18);
             vars.quarbleInDone = vars.ReadPointer(proc, quarbleUI+0x20);
         }
@@ -436,7 +463,7 @@ startup {
         if(!inMenu && timer.CurrentPhase == TimerPhase.Running) {
             vars.gameManagerAddr.Update(proc);
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerPtr+vars.instructionsOffset[4])));
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerSig+vars.instructionsOffset[4])));
                 vars.gameManagerAddr.Update(proc);
             }
 
@@ -478,40 +505,64 @@ startup {
         return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
     });
 
-    vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.ResetVars();
+    vars.CleanSceneName = (Func<string>)(() => {
+        return (vars.currentSceneName.EndsWith("_Build")) ? vars.currentSceneName.Substring(0, vars.currentSceneName.Length-6) : vars.currentSceneName;
     });
-    timer.OnStart += vars.timerResetVars;
+
+    vars.ClearSplitString = (Action<Process, int>)((proc, listOffset) => {
+        IntPtr listPtr = vars.ReadPointer(proc, vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x10);
+        int listId = 0;
+        int listCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x18);
+        while(listId < listCount) {
+            IntPtr stringPtr = vars.ReadPointer(proc, listPtr+0x20+0x8*listId);
+            string stringValue = proc.ReadString(stringPtr+0x14, 64).ToString();
+            if(vars.splitToRemove.Contains(stringValue)) {
+                IntPtr lastStringPtr = (listId == listCount-1) ? IntPtr.Zero : vars.ReadPointer(proc, listPtr+0x20+0x8*(listCount-1));
+
+                int size = System.Runtime.InteropServices.Marshal.SizeOf(lastStringPtr);
+                byte[] arr = new byte[size];
+                
+                IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
+                System.Runtime.InteropServices.Marshal.StructureToPtr(lastStringPtr, ptr, true);
+                System.Runtime.InteropServices.Marshal.Copy(ptr, arr, 0, size);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
+                
+                proc.WriteBytes(listPtr+0x20+0x8*listId, arr);
+                proc.WriteBytes((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x18, BitConverter.GetBytes(--listCount));
+            } else
+                ++listId;
+        }
+    });
 }
 
 init {
     bool instructionsFound = false;
-    vars.levelManagerPtr = IntPtr.Zero;
-    vars.progressionManagerPtr = IntPtr.Zero;
-    vars.inventoryManagerPtr = IntPtr.Zero;
-    vars.gameManagerPtr = IntPtr.Zero;
-    vars.UIManagerPtr = IntPtr.Zero;
+    vars.levelManagerSig = IntPtr.Zero;
+    vars.progressionManagerSig = IntPtr.Zero;
+    vars.inventoryManagerSig = IntPtr.Zero;
+    vars.gameManagerSig = IntPtr.Zero;
+    vars.UIManagerSig = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(vars.levelManagerPtr == IntPtr.Zero && ((vars.levelManagerPtr = scanner.Scan(vars.scanLevelManager)) != IntPtr.Zero))
-            print("[Autosplitter] LevelManager Found : " + vars.levelManagerPtr.ToString("X"));
+        if(vars.levelManagerSig == IntPtr.Zero && ((vars.levelManagerSig = scanner.Scan(vars.scanLevelManager)) != IntPtr.Zero))
+            print("[Autosplitter] LevelManager Found : " + vars.levelManagerSig.ToString("X"));
 
-        if(vars.progressionManagerPtr == IntPtr.Zero && ((vars.progressionManagerPtr = scanner.Scan(vars.scanProgressionManager)) != IntPtr.Zero))
-            print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerPtr.ToString("X"));
+        if(vars.progressionManagerSig == IntPtr.Zero && ((vars.progressionManagerSig = scanner.Scan(vars.scanProgressionManager)) != IntPtr.Zero))
+            print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerSig.ToString("X"));
 
-        if(vars.inventoryManagerPtr == IntPtr.Zero && ((vars.inventoryManagerPtr = scanner.Scan(vars.scanInventoryManager)) != IntPtr.Zero))
-            print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerPtr.ToString("X"));
+        if(vars.inventoryManagerSig == IntPtr.Zero && ((vars.inventoryManagerSig = scanner.Scan(vars.scanInventoryManager)) != IntPtr.Zero))
+            print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerSig.ToString("X"));
 
-        if(vars.UIManagerPtr == IntPtr.Zero && ((vars.UIManagerPtr = scanner.Scan(vars.scanUIManager)) != IntPtr.Zero))
-            print("[Autosplitter] UIManager Found : " + vars.UIManagerPtr.ToString("X"));
+        if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(vars.scanUIManager)) != IntPtr.Zero))
+            print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
 
-        if(settings["RoomTimer"] && vars.gameManagerPtr == IntPtr.Zero && ((vars.gameManagerPtr = scanner.Scan(vars.scanGameManager)) != IntPtr.Zero))
-            print("[Autosplitter] GameManager Found : " + vars.gameManagerPtr.ToString("X"));
+        if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(vars.scanGameManager)) != IntPtr.Zero))
+            print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
 
-        instructionsFound = vars.levelManagerPtr != IntPtr.Zero && vars.progressionManagerPtr != IntPtr.Zero && vars.inventoryManagerPtr != IntPtr.Zero && vars.UIManagerPtr != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerPtr != IntPtr.Zero : true);
+        instructionsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -519,11 +570,20 @@ init {
     if (!instructionsFound)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerPtr+0x7) == 0x53;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0} : new int[] {0x136, 0x6E, 0x0, -0xAC, 0x0};
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.ResetVars();
+        vars.ClearSplitString(game, 0x60);
+        vars.ClearSplitString(game, 0x78);
+    });
+    timer.OnStart += vars.timerResetVars;
+
+    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x0};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
     vars.quarbleUIOffset = 0x0;
+
+    vars.splitToRemove = new List<string>() {"SurfBoss", "Totem", "PunchOut", "SurfBossIntroCutscene", "TotemBossIntroCutscene", "RaceWinCutscene", "StartFinalPPBossCutscene"};
 
     vars.ResetVars();
 
@@ -584,10 +644,10 @@ start {
 
 split {
     if(vars.oldSceneName != vars.currentSceneName && vars.oldSceneName.Length > 8 && vars.currentSceneName.Length > 8 && vars.visitedLevels.Add(vars.currentSceneName))
-        return settings[vars.currentSceneName.Substring(0, vars.currentSceneName.Length-6)];
+        return settings[vars.CleanSceneName()];
 
     if(vars.oldBossesDefeatedCount < vars.currentBossesDefeatedCount)
-        return settings["Boss_"+vars.currentSceneName.Substring(6, vars.currentSceneName.Length-12)];
+        return settings["Boss_"+vars.CleanSceneName().Substring(6)];
 
     while(vars.itemsToSplit.Count > 0) {
         string itemToSplit = vars.itemsToSplit.Dequeue();
@@ -601,7 +661,7 @@ split {
         return settings["Seal_"+vars.ReadString(game, vars.challengeRoomsCompletedAddr, vars.currentChallengeRoomsCompletedCount)];
 
     if(vars.oldCheckpointIndex != vars.currentCheckpointIndex && vars.currentCheckpointIndex > -1 && vars.savedCheckpoints.Add(vars.currentSceneName+"_"+vars.currentCheckpointIndex))
-        return settings["Checkpoint_"+vars.currentSceneName.Substring(6, vars.currentSceneName.Length-12)+"_"+vars.currentCheckpointIndex];
+        return settings["Checkpoint_"+vars.CleanSceneName().Substring(6)+"_"+vars.currentCheckpointIndex];
 
     if(vars.oldCutscenesPlayedCount != vars.currentCutscenesPlayedCount) {
         string cutsceneSplit = "Cutscene_"+vars.ReadString(game, vars.cutscenesPlayedAddr, vars.currentCutscenesPlayedCount);
