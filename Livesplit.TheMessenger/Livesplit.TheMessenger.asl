@@ -359,7 +359,7 @@ startup {
     vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
     vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
     vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
-    //DLCManager 00 48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28
+    vars.scanDLCManager = new SigScanTarget(17, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
     vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
     vars.ResetVars = (Action)(() => {
@@ -388,6 +388,8 @@ startup {
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
 
         vars.quarbleInDone = vars.quarbleAnim = IntPtr.Zero;
+
+        vars.oldDLCSelectionDone = vars.curDLCSelectionDone = false;
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
@@ -426,6 +428,9 @@ startup {
             vars.quarbleAnim = vars.ReadPointer(proc, quarbleUI+0x18);
             vars.quarbleInDone = vars.ReadPointer(proc, quarbleUI+0x20);
         }
+
+        vars.oldDLCSelectionDone = vars.curDLCSelectionDone;
+        vars.curDLCSelectionDone = proc.ReadValue<bool>((IntPtr)vars.ReadPointers(proc, vars.DLCManagerSig, new int[] {vars.instructionsOffset[4], 0x0})+0x34);
     });
 
     vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
@@ -463,7 +468,7 @@ startup {
         if(!inMenu && timer.CurrentPhase == TimerPhase.Running) {
             vars.gameManagerAddr.Update(proc);
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerSig+vars.instructionsOffset[4])));
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerSig+vars.instructionsOffset[5])));
                 vars.gameManagerAddr.Update(proc);
             }
 
@@ -542,6 +547,7 @@ init {
     vars.inventoryManagerSig = IntPtr.Zero;
     vars.gameManagerSig = IntPtr.Zero;
     vars.UIManagerSig = IntPtr.Zero;
+    vars.DLCManagerSig = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
@@ -559,10 +565,13 @@ init {
         if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(vars.scanUIManager)) != IntPtr.Zero))
             print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
 
+        if(vars.DLCManagerSig == IntPtr.Zero && ((vars.DLCManagerSig = scanner.Scan(vars.scanDLCManager)) != IntPtr.Zero))
+            print("[Autosplitter] DLCManager Found : " + vars.DLCManagerSig.ToString("X"));
+
         if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(vars.scanGameManager)) != IntPtr.Zero))
             print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
 
-        instructionsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
+        instructionsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && vars.DLCManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
         if(instructionsFound)
             break;
     }
@@ -578,7 +587,7 @@ init {
     timer.OnStart += vars.timerResetVars;
 
     vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x0};
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x0, 0x0};
     vars.textSettingCurrent = vars.textSettingPrevious = null;
 
     vars.quarbleUIOffset = 0x0;
@@ -639,7 +648,7 @@ update {
 }
 
 start {
-    return vars.currentSceneName.StartsWith((settings["ILStart"] ? "Level_" : "Level_01")) && vars.oldSceneName.Length < 8;
+    return vars.currentSceneName.StartsWith((settings["ILStart"] ? "Level_" : "Level_01")) && vars.oldSceneName.Length < 8 || (vars.curDLCSelectionDone && vars.oldDLCSelectionDone != vars.curDLCSelectionDone);
 }
 
 split {
