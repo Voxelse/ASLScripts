@@ -2,6 +2,16 @@ state("Baba Is You") {}
 
 startup {
     vars.versions = new Dictionary<int, Tuple<string, int[]>>() {
+        {0x5DF807E8, Tuple.Create("259", new int[] {0x3FE92C, 0x3FFB7C, 0x4004C4, 0x507088})}, //20/12/2019 – 21:29:26
+        {0x5DCFEB62, Tuple.Create("253", new int[] {0x3FA75C, 0x3FB9AC, 0x3FC2F4, 0x502E48})}, //16/11/2019 – 19:31:53
+        {0x5D435BFA, Tuple.Create("HX",  new int[] {0x3EA714, 0x3EB964, 0x3EC2AC, 0x4F26D8})}, //01/08/2019 – 22:29:19
+        //04/07/2019 – 22:48:15
+        //03/07/2019 – 10:24:41
+        //02/07/2019 – 21:06:04
+        //02/07/2019 – 01:37:26
+        //01/07/2019 – 01:38:15
+        //28/05/2019 – 01:05:25
+        //13/05/2019 – 20:52:22
         {0x5CD083A6, Tuple.Create("HG",  new int[] {0x36BFBC, 0x36D20C, 0x36DB54, 0x473578})}, //07/05/2019 - 02:09:27
         {0x5CBFC893, Tuple.Create("HF",  new int[] {0x36BFC4, 0x36D214, 0x36DB5C, 0x473588})}, //24/04/2019 - 02:53:14
         {0x5CBE85B4, Tuple.Create("HEb", new int[] {0x36BFDC, 0x36D22C, 0x36DB74, 0x473598})}, //23/04/2019 - 09:27:45
