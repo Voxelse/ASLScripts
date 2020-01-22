@@ -45,6 +45,7 @@ init {
     
     vars.watchers = new MemoryWatcherList() {
         (vars.room = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAD)) : new MemoryWatcher<byte>(ptr+0x0)),
+        (vars.continue = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB2)) : new MemoryWatcher<byte>(ptr+0x0)),
         (vars.bubbleX = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16A)) : new MemoryWatcher<byte>(ptr+0x0)),
         (vars.bubbleY = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16B)) : new MemoryWatcher<byte>(ptr+0x0))
     };
@@ -68,5 +69,5 @@ split {
 }
 
 reset {
-    return vars.room.Changed && vars.room.Current == 0 && vars.room.Old != 255;
+    return vars.room.Changed && vars.room.Current == 0 && vars.room.Old != 255 && vars.continue.Old == 0;
 }
