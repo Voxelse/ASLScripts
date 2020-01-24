@@ -1,11 +1,9 @@
-// state("gambatte_qt_nonpsr") {}
-// state("gambatte_qt") {}
-// state("gambatte") {}
+state("gambatte_qt_nonpsr") {}
+state("gambatte_qt") {}
+state("gambatte") {}
 state("emuhawk") {}
-// state("bgb64") {}
-// state("bgb") {}
-
-//TODO implement gambatte & bgb support
+state("bgb64") {}
+state("bgb") {}
 
 startup {
     refreshRate = 0.5;
@@ -35,19 +33,18 @@ init {
             ptr = (IntPtr)((long)(wram-0x40)-(long)modules.First().BaseAddress);
         useDeepPtr = true;
     } else {
-        //TODO implement gambatte & bgb
-        // var target = new SigScanTarget(0, "FF FF 10 00 00 00 00 FF FF");
-        // ptr = vars.SigScan(game, target);
+        var target = new SigScanTarget(0, "47 47 47 47 00 00 00 00 47 47 47 47 00 00 00 00 47 47 47 47 00 00 00 00 47 47 47 47 00 00 00 00 47 47 47 47");
+        ptr = vars.SigScan(game, target)-0x101;
     }
 
     if (ptr == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
     
     vars.watchers = new MemoryWatcherList() {
-        (vars.room = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAD)) : new MemoryWatcher<byte>(ptr+0x0)),
-        (vars.life = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB2)) : new MemoryWatcher<byte>(ptr+0x0)),
-        (vars.bubbleX = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16A)) : new MemoryWatcher<byte>(ptr+0x0)),
-        (vars.bubbleY = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16B)) : new MemoryWatcher<byte>(ptr+0x0))
+        (vars.room = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAD)) : new MemoryWatcher<byte>(ptr+0xAD)),
+        (vars.life = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB2)) : new MemoryWatcher<byte>(ptr+0xB2)),
+        (vars.bubbleX = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16A)) : new MemoryWatcher<byte>(ptr+0x16A)),
+        (vars.bubbleY = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x16B)) : new MemoryWatcher<byte>(ptr+0x16B))
     };
     
     refreshRate = 200/3d;
@@ -58,7 +55,7 @@ update {
 }
 
 start {
-    return vars.room.Old == 0 && vars.room.Current == 255;
+    return vars.room.Old != vars.room.Current && vars.room.Current == 255;
 }
 
 split {
