@@ -6,8 +6,9 @@ startup {
     settings.Add("area", false, "Split at each Area");
     settings.Add("level", true, "Split at each Level");
     settings.Add("set", false, "Split at each Set");
+    settings.Add("ilMode", false, "Individual Level Mode");
 
-    settings.Add("custom", false, "Custom");
+    settings.Add("custom", false, "Custom Splits");
 
     settings.CurrentDefaultParent = "custom";
     settings.Add("a1", true, "The Warehouse");
@@ -127,7 +128,10 @@ init {
 
 update {
     vars.oldGameTime = vars.curGameTime;
-    vars.curGameTime = game.ReadValue<int>((IntPtr)vars.saveData+0x184);
+    if(settings["ilMode"])
+        vars.curGameTime = game.ReadValue<int>((IntPtr)vars.game+0x38);
+    else
+        vars.curGameTime = game.ReadValue<int>((IntPtr)vars.saveData+0x184);
 
     vars.gaveUp = game.ReadValue<bool>((IntPtr)vars.game+0x8);
     vars.oldExitTimer = vars.curExitTimer;
