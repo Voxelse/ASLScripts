@@ -116,6 +116,7 @@ startup {
     // Function called when the timer start to reset local variables
     vars.ResetVars = (EventHandler)((s, e) => {
         vars.totalResets = 0;
+        vars.UpdateResetTracker();
         vars.curSumMedals = vars.oldSumMedals = 0;
         vars.curFullBatches = vars.oldFullBatches = 0;
         vars.curRainbowBatches = vars.oldRainbowBatches = 0;
@@ -167,6 +168,8 @@ init {
         // The active GUI screen being displayed
         (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x568, 0x24, 0x4, 0x0, 0x20)))
     };
+
+    vars.UpdateResetTracker();
 
     refreshRate = 200/3d;
 }
