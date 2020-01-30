@@ -18,19 +18,19 @@ startup {
 
     settings.Add("category_all_levels", false, "All Levels Splitting");
     settings.Add("all_levels_batch", true, "Split at each batch cleared", "category_all_levels");
-	settings.Add("all_levels_track", false, "Split at every track cleared", "category_all_levels");
+    settings.Add("all_levels_track", false, "Split at every track cleared", "category_all_levels");
     
     settings.Add("category_all_rainbows", false, "All Rainbows Splitting");
     settings.Add("all_rainbows_batch", true, "Split at each batch rainbowed", "category_all_rainbows");
-	settings.Add("all_rainbows_track", false, "Split at every track rainbowed (or completed for specials)", "category_all_rainbows");
+    settings.Add("all_rainbows_track", false, "Split at every track rainbowed (or completed for specials)", "category_all_rainbows");
     
     settings.Add("category_hundo", false, "100% Splitting");
     settings.Add("hundo_batch", true, "Split at each batch fully completed", "category_hundo");
-	settings.Add("hundo_track", false, "Split at every track rainbowed (or completed for specials)", "category_hundo");
+    settings.Add("hundo_track", false, "Split at every track rainbowed (or completed for specials)", "category_hundo");
 
     settings.Add("category_45classics", false, "45 Classics Splitting");
-	settings.Add("45classics_batch", true, "Split at each last classic track of each batch", "category_45classics");
-	settings.Add("45classics_track", false, "Split at every track done", "category_45classics");
+    settings.Add("45classics_batch", true, "Split at each last classic track of each batch", "category_45classics");
+    settings.Add("45classics_track", false, "Split at every track done", "category_45classics");
     
     settings.Add("reset_tracking", false, "Reset Tracking");
     settings.SetToolTip("reset_tracking", "Tracks the amount of times you reset during a run. Only works on retry, not checkpoint restart");
@@ -39,7 +39,7 @@ startup {
     settings.SetToolTip("medal_tracking", "Tracks the amount of medals (Sp->Special, B->Bronze, S->Silver, G->Gold, R->Rainbow)");
 
     // Array of ids of the last classics levels of batches 
-	vars.classicBatchEnd = new int[] {14, 7, 50, 23, 47, 66, 26, 76, 31};
+    vars.classicBatchEnd = new int[] {14, 7, 50, 23, 47, 66, 26, 76, 31};
 
     // Id of levels sorted by batches
     vars.levelsCode = new int[][] {
@@ -81,7 +81,7 @@ startup {
     vars.textSettingReset = null;
     vars.totalResets = 0;
 
-    // Medal tracker variable
+    // Medal tracker variables
     vars.textSettingMedal = null;
     vars.medalsTypeCount = new int[5];
     vars.medalsTypeName = new string[5] {"Sp", "B", "S", "G", "R"};
@@ -119,9 +119,8 @@ startup {
 
         string medalText = "";
         for (int medalTypeId = 0; medalTypeId < vars.medalsTypeCount.Length; medalTypeId++) {
-            int nbTypeMedal = vars.medalsTypeCount[medalTypeId];
-            if(nbTypeMedal == 0) continue;
-            medalText = string.Concat(medalText, vars.medalsTypeName[medalTypeId], ": ", vars.medalsTypeCount[medalTypeId], "  ");
+            if(vars.medalsTypeCount[medalTypeId] == 0) continue;
+            medalText = string.Concat(medalText, vars.medalsTypeName[medalTypeId], ": ", vars.medalsTypeCount[medalTypeId], " ");
             
         }
         vars.textSettingMedal.Text2 = (medalText == "" ? "No medals yet" : medalText);
@@ -139,7 +138,7 @@ startup {
     // Function called when the timer start to reset local variables
     vars.ResetVars = (EventHandler)((s, e) => {
         if(settings["medal_tracking"]) {
-            vars.medalsTypeCount = new int[6];
+            vars.medalsTypeCount = new int[5];
             vars.UpdateMedalTracker();
         }
         if(settings["reset_tracking"]) {
@@ -232,7 +231,7 @@ init {
 
 start {
     // Runs start when the player hits "Play" on the main menu and has cleared their medal data or has 45 Classics category checked
-	return vars.activeScreen.Old == vars.GUIScreen_MainMenu && vars.activeScreen.Current == vars.GUIScreen_BatchSelect && (vars.numMedals.Old == 0 || settings["category_45classics"]);
+    return vars.activeScreen.Old == vars.GUIScreen_MainMenu && vars.activeScreen.Current == vars.GUIScreen_BatchSelect && (vars.numMedals.Old == 0 || settings["category_45classics"]);
 }
 
 update {
@@ -245,7 +244,7 @@ update {
     vars.oldCompletedBatches = vars.curCompletedBatches;
     
     // Update when the medal count change in the current level
-	if(vars.levelCode.Old != 0 && vars.bestMedal.Old < vars.bestMedal.Current) {
+    if(vars.levelCode.Old != 0 && vars.bestMedal.Old < vars.bestMedal.Current) {
         int indexOfLevel = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
         vars.levelsMedals[vars.lookingAtBatchNum.Current][indexOfLevel] = vars.bestMedal.Current;
         vars.curSumMedals += vars.bestMedal.Current-vars.bestMedal.Old;
@@ -354,12 +353,12 @@ split {
 
 reset {
     // Automatically reset when going to the main menu while having no medal except if 45 Classics category is checked
-	return vars.activeScreen.Changed && vars.activeScreen.Current == vars.GUIScreen_MainMenu && (vars.numMedals.Current == 0 || settings["category_45classics"]);
+    return vars.activeScreen.Changed && vars.activeScreen.Current == vars.GUIScreen_MainMenu && (vars.numMedals.Current == 0 || settings["category_45classics"]);
 }
 
 isLoading {
     // Ignore time spent loading and in cutscenes, as well as network-based latency, such as submitting scores to the Steam leaderboards when on the post game screen
-	return vars.activeScreen.Current == vars.GUIScreen_Loading || vars.activeScreen.Current == vars.GUIScreen_PostGame || vars.activeScreen.Current == vars.GUIScreen_Cutscene;
+    return vars.activeScreen.Current == vars.GUIScreen_Loading || vars.activeScreen.Current == vars.GUIScreen_PostGame || vars.activeScreen.Current == vars.GUIScreen_Cutscene;
 }
 
 shutdown {
