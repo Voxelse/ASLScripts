@@ -1,5 +1,4 @@
-// Original script by faultyserver and badBlackShark : https://github.com/henktools/autosplitters/blob/24fc959db9526e74ef0f206e05032e22c9f64c93/LiveSplit.ActionHenk.asl
-// Whole script rework and overall performance optimization/stability made by me as well as the batch/track splits and the 45 Classics category addition
+// Script made by faultyserver, badBlackShark and Voxelse
 
 state("ActionHenk") {}
 
@@ -10,7 +9,6 @@ startup {
     vars.anyMedalsUnlock = new int[] {7, 16, 27, 38, 43, 57, 72, 85};
 
     settings.Add("category_any", true, "Any% Splitting");
-    settings.SetToolTip("category_any", "Full auto-splitting for Any% runs.");
     for (int i = 0; i < vars.anyMedalsUnlock.Length; i++)
         settings.Add("any_"+vars.anyMedalsUnlock[i], true, "Split when unlocking "+vars.anyMedalsUnlock[i]+" medals", "category_any");
     settings.Add("any_the_wall", true, "Split when beating \"The Wall\"", "category_any");
@@ -19,30 +17,26 @@ startup {
     settings.Add("any_credits", true, "Split when beating \"Credits\"", "category_any");
 
     settings.Add("category_all_levels", false, "All Levels Splitting");
-    settings.SetToolTip("category_all_levels", "Full auto-splitting for All Levels runs.");
     settings.Add("all_levels_batch", true, "Split at each batch cleared", "category_all_levels");
 	settings.Add("all_levels_track", false, "Split at every track cleared", "category_all_levels");
     
     settings.Add("category_all_rainbows", false, "All Rainbows Splitting");
-    settings.SetToolTip("category_all_rainbows", "Full auto-splitting for All Rainbows runs.");
     settings.Add("all_rainbows_batch", true, "Split at each batch rainbowed", "category_all_rainbows");
 	settings.Add("all_rainbows_track", false, "Split at every track rainbowed (or completed for specials)", "category_all_rainbows");
     
     settings.Add("category_hundo", false, "100% Splitting");
-    settings.SetToolTip("category_hundo", "Full auto-splitting for 100% runs.");
     settings.Add("hundo_batch", true, "Split at each batch fully completed", "category_hundo");
 	settings.Add("hundo_track", false, "Split at every track rainbowed (or completed for specials)", "category_hundo");
 
     settings.Add("category_45classics", false, "45 Classics Splitting");
-    settings.SetToolTip("category_45classics", "Full auto-splitting for 45 Classics runs.");
 	settings.Add("45classics_batch", true, "Split at each last classic track of each batch", "category_45classics");
-	settings.Add("45classics_track", false, "Split at every track", "category_45classics");
-    
-    settings.Add("load_removal", false, "Load Removal");
-    settings.SetToolTip("load_removal", "Load Removal pauses the timer during load times, cutscenes, and the post-game menus.");
+	settings.Add("45classics_track", false, "Split at every track done", "category_45classics");
     
     settings.Add("reset_tracking", false, "Reset Tracking");
-    settings.SetToolTip("reset_tracking", "Tracks the amount of times you reset during an attempt. Only works when using the full reset, not checkpoint reset, key.");
+    settings.SetToolTip("reset_tracking", "Tracks the amount of times you reset during a run. Only works on retry, not checkpoint restart");
+
+    settings.Add("medal_tracking", false, "Medal Tracking");
+    settings.SetToolTip("medal_tracking", "Tracks the amount of medals (Sp->Special, B->Bronze, S->Silver, G->Gold, R->Rainbow)");
 
     // Array of ids of the last classics levels of batches 
 	vars.classicBatchEnd = new int[] {14, 7, 50, 23, 47, 66, 26, 76, 31};
@@ -87,6 +81,11 @@ startup {
     vars.textSettingReset = null;
     vars.totalResets = 0;
 
+    // Medal tracker variable
+    vars.textSettingMedal = null;
+    vars.medalsTypeCount = new int[5];
+    vars.medalsTypeName = new string[5] {"Sp", "B", "S", "G", "R"};
+
     // Update function of the reset tracker
     vars.UpdateResetTracker = (Action)(() => {
         if(vars.textSettingReset == null) {
@@ -104,6 +103,30 @@ startup {
         vars.textSettingReset.Text2 = vars.totalResets.ToString();
     });
 
+    // Update function of the medal tracker
+    vars.UpdateMedalTracker = (Action)(() => {
+        if(vars.textSettingMedal == null) {
+            foreach (dynamic component in timer.Layout.Components) {
+                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Medals Count:") {
+                    vars.textSettingMedal = component.Settings;
+                    break;
+                }
+            }
+
+            if(vars.textSettingMedal == null)
+                vars.textSettingMedal = vars.CreateTextComponent("Medals Count:");
+        }
+
+        string medalText = "";
+        for (int medalTypeId = 0; medalTypeId < vars.medalsTypeCount.Length; medalTypeId++) {
+            int nbTypeMedal = vars.medalsTypeCount[medalTypeId];
+            if(nbTypeMedal == 0) continue;
+            medalText = string.Concat(medalText, vars.medalsTypeName[medalTypeId], ": ", vars.medalsTypeCount[medalTypeId], "  ");
+            
+        }
+        vars.textSettingMedal.Text2 = (medalText == "" ? "No medals yet" : medalText);
+    });
+
     // Component creation function
     vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
         var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
@@ -115,8 +138,14 @@ startup {
 
     // Function called when the timer start to reset local variables
     vars.ResetVars = (EventHandler)((s, e) => {
-        vars.totalResets = 0;
-        vars.UpdateResetTracker();
+        if(settings["medal_tracking"]) {
+            vars.medalsTypeCount = new int[6];
+            vars.UpdateMedalTracker();
+        }
+        if(settings["reset_tracking"]) {
+            vars.totalResets = 0;
+            vars.UpdateResetTracker();
+        }
         vars.curSumMedals = vars.oldSumMedals = 0;
         vars.curFullBatches = vars.oldFullBatches = 0;
         vars.curRainbowBatches = vars.oldRainbowBatches = 0;
@@ -124,7 +153,14 @@ startup {
     });
     timer.OnStart += vars.ResetVars;
 
-    // Return if the current level is completed with at least bronze medal(param false) or with rainbow medal(param false)
+    // Function called when the timer reset to reset tracking display
+    vars.ResetDisplay = (LiveSplit.Model.Input.EventHandlerT<TimerPhase>)((s, e) => {
+        if(vars.textSettingReset != null) vars.textSettingReset.Text2 = "0";
+        if(vars.textSettingMedal != null) vars.textSettingMedal.Text2 = "No medals yet";
+    });
+    timer.OnReset += vars.ResetDisplay;
+
+    // Return if the current level is completed with at least bronze medal(param false) or with rainbow medal(param true)
     vars.IsCurrentLevelCompleted = (Func<bool, bool>)((isRainbow) => {
         if(vars.oldSumMedals == vars.curSumMedals) return false;
         int levelId = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
@@ -169,7 +205,8 @@ init {
         (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x568, 0x24, 0x4, 0x0, 0x20)))
     };
 
-    vars.UpdateResetTracker();
+    if(settings["medal_tracking"]) vars.UpdateMedalTracker();
+    if(settings["reset_tracking"]) vars.UpdateResetTracker();
 
     refreshRate = 200/3d;
 }
@@ -215,6 +252,16 @@ update {
             if(batchIsFull) ++vars.curFullBatches;
             if(batchIsRainbow) ++vars.curRainbowBatches;
             if(batchIsCompleted) ++vars.curCompletedBatches;
+        }
+
+        if(settings["medal_tracking"]) {
+            if(indexOfLevel > 4) {
+                ++vars.medalsTypeCount[0];
+            } else {
+                if(vars.bestMedal.Old != 0) --vars.medalsTypeCount[vars.bestMedal.Old];
+                ++vars.medalsTypeCount[vars.bestMedal.Current];
+            }
+            vars.UpdateMedalTracker();
         }
     }
 
@@ -270,4 +317,5 @@ isLoading {
 
 shutdown {
     timer.OnStart -= vars.ResetVars;
+    timer.OnReset -= vars.ResetDisplay;
 }
