@@ -169,42 +169,61 @@ startup {
 
     // AOB signature for ActionHenk:Start
     vars.scanActionHenkStart = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C 8B 7D 08 8B 47 20");
+    // AOB signature for State_InGame:FixedUpdate
+    vars.scanStateInGameFixedUpdate = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C C7 45 DC 00 00 00 00");
 }
 
 init {
     IntPtr ptrActionHenkStart = IntPtr.Zero;
+    IntPtr ptrStateInGameFixedUpdate = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if((ptrActionHenkStart = scanner.Scan(vars.scanActionHenkStart)) != IntPtr.Zero) {
+        if((ptrActionHenkStart = scanner.Scan(vars.scanActionHenkStart)) != IntPtr.Zero)
             print("[Autosplitter] ActionHenk:Start Found : " + ptrActionHenkStart.ToString("X"));
+
+        if((ptrStateInGameFixedUpdate = scanner.Scan(vars.scanStateInGameFixedUpdate)) != IntPtr.Zero)
+            print("[Autosplitter] State_InGame:FixedUpdate Found : " + ptrStateInGameFixedUpdate.ToString("X"));
+
+        if(ptrActionHenkStart != IntPtr.Zero && ptrStateInGameFixedUpdate != IntPtr.Zero)
             break;
-        }
     }
 
-    if (ptrActionHenkStart == IntPtr.Zero)
+    if(ptrActionHenkStart == IntPtr.Zero || ptrStateInGameFixedUpdate == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
 
-    int relPtr = (int)((long)ptrActionHenkStart - (long)modules.First().BaseAddress);
+    int relPtrActionHenk = (int)((long)ptrActionHenkStart - (long)modules.First().BaseAddress);
+    int relPtrStateInGame = (int)((long)ptrStateInGameFixedUpdate - (long)modules.First().BaseAddress);
 
-    vars.watchers = new MemoryWatcherList() {
+    vars.globalWatchers = new MemoryWatcherList() {
         // LevelBatchManager
         // Number of medal earned in the current level
-        (vars.bestMedal =         new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x472, 0x24, 0x4, 0x0, 0x2C, 0x34))),
+        (vars.bestMedal =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x34))),
         // Id/code of the current level
-        (vars.levelCode =         new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x472, 0x24, 0x4, 0x0, 0x2C, 0x74))),
+        (vars.levelCode =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x74))),
         // Total number of medals while in the main menu. Otherwise total number of rainbow medals
-        (vars.numMedals =         new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x472, 0x24, 0x4, 0x0, 0x38))),
+        (vars.numMedals =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x38))),
         // Id of the current batch
-        (vars.lookingAtBatchNum = new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x472, 0x24, 0x4, 0x0, 0x40))),
+        (vars.lookingAtBatchNum = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x40))),
 
         // GUIManager
         // The active GUI screen being displayed
-        (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtr+0x568, 0x24, 0x4, 0x0, 0x20)))
+        (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x568, 0x24, 0x4, 0x0, 0x20)))
     };
 
+    vars.medalTrackerWatchers = new MemoryWatcherList() {
+        // LevelBatchManager
+        // Pointer of currentLevel used to read track medal/bonus times with offsets
+        (vars.trackTimePtr = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C))),
+
+        // CheckpointManager
+        // The active GUI screen being displayed
+        (vars.finishTime = new MemoryWatcher<float>(new DeepPointer((int)relPtrStateInGame+0x16D, 0x24, 0x4, 0x0, 0x24)))
+    };
+
+    // Initialization of tracking if settings are checked
     if(settings["medal_tracking"]) vars.UpdateMedalTracker();
     if(settings["reset_tracking"]) vars.UpdateResetTracker();
 
@@ -217,7 +236,7 @@ start {
 }
 
 update {
-    vars.watchers.UpdateAll(game);
+    vars.globalWatchers.UpdateAll(game);
 
     // Update old local variables
     vars.oldSumMedals = vars.curSumMedals;
@@ -254,7 +273,8 @@ update {
             if(batchIsCompleted) ++vars.curCompletedBatches;
         }
 
-        if(settings["medal_tracking"]) {
+        // Update medal tracking if 45 Classics is not checked
+        if(settings["medal_tracking"] && !settings["category_45classics"]) {
             if(indexOfLevel > 4) {
                 ++vars.medalsTypeCount[0];
             } else {
@@ -262,6 +282,33 @@ update {
                 ++vars.medalsTypeCount[vars.bestMedal.Current];
             }
             vars.UpdateMedalTracker();
+        }
+    }
+
+    // Update medal tracking if 45 Classics is checked
+    if(settings["medal_tracking"] && settings["category_45classics"]) {
+        vars.medalTrackerWatchers.UpdateAll(game);
+
+        if(vars.finishTime.Changed && vars.finishTime.Current != 0) {
+            int indexOfLevel = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
+            if(indexOfLevel > 4) {
+                if(vars.finishTime.Current < game.ReadValue<float>((IntPtr)(vars.trackTimePtr.Current+0x40+(indexOfLevel == 6 ? 0x10 : 0x0)))) {
+                    ++vars.medalsTypeCount[0];
+                    vars.UpdateMedalTracker();
+                }
+            } else {
+                int medalNb = 0;
+                for (int medalTimeOffset = 0; medalTimeOffset < 4; medalTimeOffset++) {
+                    if(vars.finishTime.Current < game.ReadValue<float>((IntPtr)vars.trackTimePtr.Current+0x40+0x4*medalTimeOffset))
+                        ++medalNb;
+                    else
+                        break;
+                }
+                if(medalNb != 0) {
+                    ++vars.medalsTypeCount[medalNb];
+                    vars.UpdateMedalTracker();
+                }
+            }
         }
     }
 
@@ -307,7 +354,7 @@ split {
 
 reset {
     // Automatically reset when going to the main menu while having no medal except if 45 Classics category is checked
-	return vars.activeScreen.Old != vars.activeScreen.Current && vars.activeScreen.Current == vars.GUIScreen_MainMenu && (vars.numMedals.Current == 0 || settings["category_45classics"]);
+	return vars.activeScreen.Changed && vars.activeScreen.Current == vars.GUIScreen_MainMenu && (vars.numMedals.Current == 0 || settings["category_45classics"]);
 }
 
 isLoading {
