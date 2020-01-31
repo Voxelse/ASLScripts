@@ -177,10 +177,10 @@ init {
     foreach (var page in game.MemoryPages()) {
         var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if((ptrActionHenkStart = scanner.Scan(vars.scanActionHenkStart)) != IntPtr.Zero)
+        if(ptrActionHenkStart == IntPtr.Zero && (ptrActionHenkStart = scanner.Scan(vars.scanActionHenkStart)) != IntPtr.Zero)
             print("[Autosplitter] ActionHenk:Start Found : " + ptrActionHenkStart.ToString("X"));
 
-        if((ptrStateInGameFixedUpdate = scanner.Scan(vars.scanStateInGameFixedUpdate)) != IntPtr.Zero)
+        if(ptrStateInGameFixedUpdate == IntPtr.Zero && (ptrStateInGameFixedUpdate = scanner.Scan(vars.scanStateInGameFixedUpdate)) != IntPtr.Zero)
             print("[Autosplitter] State_InGame:FixedUpdate Found : " + ptrStateInGameFixedUpdate.ToString("X"));
 
         if(ptrActionHenkStart != IntPtr.Zero && ptrStateInGameFixedUpdate != IntPtr.Zero)
