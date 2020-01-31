@@ -88,42 +88,39 @@ startup {
 
     // Update function of the reset tracker
     vars.UpdateResetTracker = (Action)(() => {
-        if(vars.textSettingReset == null) {
-            foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Resets This Run:") {
-                    vars.textSettingReset = component.Settings;
-                    break;
-                }
-            }
-
-            if(vars.textSettingReset == null)
-                vars.textSettingReset = vars.CreateTextComponent("Resets This Run:");
-        }
+        if(vars.textSettingReset == null)
+            vars.textSettingReset = vars.SearchOrCreateComponent("Resets This Run:");
 
         vars.textSettingReset.Text2 = vars.totalResets.ToString();
     });
 
     // Update function of the medal tracker
     vars.UpdateMedalTracker = (Action)(() => {
-        if(vars.textSettingMedal == null) {
-            foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Medals Count:") {
-                    vars.textSettingMedal = component.Settings;
-                    break;
-                }
-            }
-
-            if(vars.textSettingMedal == null)
-                vars.textSettingMedal = vars.CreateTextComponent("Medals Count:");
-        }
+        if(vars.textSettingMedal == null)
+            vars.textSettingMedal = vars.SearchOrCreateComponent("Medals Count:");
 
         string medalText = "";
         for (int medalTypeId = 0; medalTypeId < vars.medalsTypeCount.Length; medalTypeId++) {
             if(vars.medalsTypeCount[medalTypeId] == 0) continue;
             medalText = string.Concat(medalText, vars.medalsTypeName[medalTypeId], ": ", vars.medalsTypeCount[medalTypeId], " ");
-            
         }
         vars.textSettingMedal.Text2 = (medalText == "" ? "No medals yet" : medalText);
+    });
+
+    // Search a text component with a specified name. Create it if not found.
+    vars.SearchOrCreateComponent = (Func<string, dynamic>)((name) => {
+        dynamic textSetting = null;
+        foreach (dynamic component in timer.Layout.Components) {
+            if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == name) {
+                textSetting = component.Settings;
+                break;
+            }
+        }
+
+        if(textSetting == null)
+            textSetting = vars.CreateTextComponent(name);
+
+        return textSetting;
     });
 
     // Component creation function
@@ -196,6 +193,7 @@ init {
     int relPtrActionHenk = (int)((long)ptrActionHenkStart - (long)modules.First().BaseAddress);
     int relPtrStateInGame = (int)((long)ptrStateInGameFixedUpdate - (long)modules.First().BaseAddress);
 
+    // Global variable watchers
     vars.globalWatchers = new MemoryWatcherList() {
         // LevelBatchManager
         // Number of medal earned in the current level
@@ -212,13 +210,14 @@ init {
         (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x568, 0x24, 0x4, 0x0, 0x20)))
     };
 
+    // Medal tracker related watchers. Only used if both medal tracker and 45 Classics settings are checked
     vars.medalTrackerWatchers = new MemoryWatcherList() {
         // LevelBatchManager
         // Pointer of currentLevel used to read track medal/bonus times with offsets
         (vars.trackTimePtr = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C))),
 
         // CheckpointManager
-        // The active GUI screen being displayed
+        // The finish time at track done
         (vars.finishTime = new MemoryWatcher<float>(new DeepPointer((int)relPtrStateInGame+0x16D, 0x24, 0x4, 0x0, 0x24)))
     };
 
@@ -288,8 +287,10 @@ update {
     if(settings["medal_tracking"] && settings["category_45classics"]) {
         vars.medalTrackerWatchers.UpdateAll(game);
 
+        // When the level is done, manually compute how much medal should be earned since medals are not reseted for 45 Classics 
         if(vars.finishTime.Changed && vars.finishTime.Current != 0) {
             int indexOfLevel = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
+            // If the level is a Challenge/Bonus, check for Bronze/Bonus time otherwise find the greatest medal earned
             if(indexOfLevel > 4) {
                 if(vars.finishTime.Current < game.ReadValue<float>((IntPtr)(vars.trackTimePtr.Current+0x40+(indexOfLevel == 6 ? 0x10 : 0x0)))) {
                     ++vars.medalsTypeCount[0];
