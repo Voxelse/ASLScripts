@@ -19,36 +19,38 @@ startup {
     settings.Add("weapon_16", false, "Rocket Launcher");
 
     settings.CurrentDefaultParent = "bosses";
-    settings.Add("event_4", false, "First Boss");
-    settings.Add("event_16", false, "Shrine Boss");
-    settings.Add("event_32", false, "Spider Boss");
-    settings.Add("event_64", false, "Blob Boss");
-    settings.Add("event_128", false, "Zen Boss");
+    settings.Add("event_4", false, "The Garbage Collector");
+    settings.Add("event_16", false, "The Guardian");
+    settings.Add("event_32", false, "The Deprecator");
+    settings.Add("event_64", false, "Furious Ferro");
+    settings.Add("event_128", false, "Zensei");
     settings.Add("event_lemonkus", false, "Lemonkus (test)");
     
     settings.CurrentDefaultParent = "events";
     settings.Add("event_8", false, "Resistance Camp Destroyed");
-    settings.Add("event_1", false, "Picked Up Air Base Core");
-    settings.Add("event_2", false, "Delivered Air Base Core");
     settings.Add("event_4096", false, "Cave Collapsed");
     settings.Add("event_8192", false, "Lava Flow Enabled");
     settings.Add("event_16384", false, "Joined Church Of Skebin");
     settings.Add("event_1024", false, "Got Captured");
     settings.Add("event_2048", false, "Got Weapons Back");
     settings.Add("event_256", false, "Escaped From Prison");
+    settings.Add("event_1", false, "Picked Up Air Base Core");
+    settings.Add("event_2", false, "Delivered Air Base Core");
     settings.Add("event_32768", false, "Flew To Mars");
     settings.Add("event_512", false, "Completed Dream Sequence");
 
     settings.CurrentDefaultParent = "scenes";
-    settings.Add("scene_Forest", false, "Forest");
-    settings.Add("scene_Desert", false, "Desert");
-    settings.Add("scene_Subway", false, "Subway");
-    settings.Add("scene_Factory", false, "Factory");
-    settings.Add("scene_Caves", false, "Caves");
+    settings.Add("scene_Factory", false, "Haunted Factory");
+    settings.Add("scene_Forest", false, "Quantum Forest");
+    //Battlecruiser Y4R?
+    settings.Add("scene_Desert", false, "Artificial Desert");
+    //Shuriken Shrine
+    settings.Add("scene_Subway", false, "Abandoned Subnet");
+    settings.Add("scene_Caves", false, "Crypto Mines");
     settings.Add("scene_ZenMountains", false, "Zen Mountains");
-    settings.Add("scene_City", false, "City");
-    settings.Add("scene_AirBase", false, "Air Base");
-    settings.Add("scene_Mars", false, "Mars");
+    settings.Add("scene_City", false, "Robopolis");
+    settings.Add("scene_AirBase", false, "SSD Floatanic");
+    settings.Add("scene_Mars", false, "0b101010");
 
     settings.CurrentDefaultParent = "perks";
     settings.Add("upgrade_32", false, "Map");
@@ -163,7 +165,7 @@ split {
         return settings["event_lemonkus"];
     }
 
-    if(vars.actToLoad.Changed && vars.visitedLevels.Add(vars.actToLoad.Current)) {
+    if(vars.actToLoad.Changed && vars.visitedScenes.Add(vars.actToLoad.Current)) {
         return settings["scene_"+vars.actToLoad.Current];
     }
 
