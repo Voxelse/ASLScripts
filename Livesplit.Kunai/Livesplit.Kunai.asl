@@ -9,6 +9,7 @@ startup {
     settings.Add("scenes", false, "Scenes (split at first enter)");
     settings.Add("perks", false, "Perks");
     settings.Add("upgrades", false, "Upgrades");
+    settings.Add("hats", false, "Hats");
 
     settings.CurrentDefaultParent = "weapons";
     settings.Add("weapon_1", false, "Katana");
@@ -24,7 +25,7 @@ startup {
     settings.Add("event_32", false, "The Deprecator");
     settings.Add("event_64", false, "Furious Ferro");
     settings.Add("event_128", false, "Zensei");
-    settings.Add("event_lemonkus", false, "Lemonkus (test)");
+    settings.Add("event_lemonkus", true, "Lemonkus (test)");
     
     settings.CurrentDefaultParent = "events";
     settings.Add("event_8", false, "Resistance Camp Destroyed");
@@ -42,9 +43,9 @@ startup {
     settings.CurrentDefaultParent = "scenes";
     settings.Add("scene_Factory", false, "Haunted Factory");
     settings.Add("scene_Forest", false, "Quantum Forest");
-    //Battlecruiser Y4R?
+    settings.Add("scene_AirShip", false, "Battlecruiser Y4R");
     settings.Add("scene_Desert", false, "Artificial Desert");
-    //Shuriken Shrine
+    settings.Add("scene_Shrine", false, "Shuriken Shrine");
     settings.Add("scene_Subway", false, "Abandoned Subnet");
     settings.Add("scene_Caves", false, "Crypto Mines");
     settings.Add("scene_ZenMountains", false, "Zen Mountains");
@@ -60,9 +61,9 @@ startup {
     settings.Add("upgrade_1", false, "Focus Chip (???)");
     settings.Add("upgrade_8", false, "Zen Mode Chip (???)");
     settings.Add("upgrade_2097152", false, "Cellular Network (???)");
-    // settings.Add("upgrade_8388608", false, "GodMode");
 
     settings.CurrentDefaultParent = "upgrades";
+    settings.Add("upgrade_4194304", false, "(Dream) Wake Up!");
     settings.Add("upgrade_16", false, "(Featured) Solar Panel");
     settings.Add("upgrade_64", false, "(Featured) Coin Magnet");
     settings.Add("upgrade_256", false, "(Katana) Charge Attack");
@@ -76,7 +77,40 @@ startup {
     settings.Add("upgrade_262144", false, "(Rocket Launcher) Missile Barrage");
     settings.Add("upgrade_524288", false, "(Rocket Launcher) Rocket Jump");
     settings.Add("upgrade_1048576", false, "(Rocket Launcher) Recoil Reduction");
-    settings.Add("upgrade_4194304", false, "(Dream) Exploit");
+
+    settings.CurrentDefaultParent = "hats";
+    settings.Add("hat_1", false, "Monitor");
+    settings.Add("hat_2", false, "Camo");
+    settings.Add("hat_4", false, "Captain");
+    settings.Add("hat_8", false, "DesertViking");
+    settings.Add("hat_16", false, "Knifi");
+    settings.Add("hat_32", false, "Hard");
+    settings.Add("hat_64", false, "Blindfold");
+    settings.Add("hat_128", false, "Ferro");
+    settings.Add("hat_256", false, "P0P0");
+    settings.Add("hat_512", false, "Cap");
+    settings.Add("hat_1024", false, "CatEars");
+    settings.Add("hat_2048", false, "Earl");
+    settings.Add("hat_4096", false, "OniMask");
+    settings.Add("hat_8192", false, "Swek");
+    settings.Add("hat_16384", false, "Tail");
+    settings.Add("hat_32768", false, "Hood");
+    settings.Add("hat_65536", false, "BeerHat");
+    settings.Add("hat_131072", false, "CookingPot");
+    settings.Add("hat_262144", false, "DealWithIt");
+    settings.Add("hat_524288", false, "Deprecator");
+    settings.Add("hat_1048576", false, "Plunger");
+    settings.Add("hat_2097152", false, "GangsterBandana");
+    settings.Add("hat_4194304", false, "Headphones");
+    settings.Add("hat_8388608", false, "Samurai");
+    settings.Add("hat_16777216", false, "Scouter");
+    settings.Add("hat_33554432", false, "SuperTabbio");
+    settings.Add("hat_67108864", false, "SwagGlasses");
+    settings.Add("hat_134217728", false, "Guardian");
+    settings.Add("hat_268435456", false, "TopHat");
+    settings.Add("hat_536870912", false, "Varken");
+    settings.Add("hat_1073741824", false, "Wizard");
+    settings.Add("hat_-2147483648", false, "GarbageCollector");
 
     vars.visitedScenes = new HashSet<string>();
 
@@ -134,9 +168,10 @@ init {
         (vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44))),
         (vars.weapons = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x50))),
         (vars.upgrades = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x54))),
+        (vars.unlockedHats = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x60))),
         (vars.worldEvents = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x68))),
 
-        (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0x0C, 0x10, 0xCC))),
+        (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC))),
         
         (vars.actToLoad = new StringWatcher(new DeepPointer(ptrLevelSystem, 0x0, 0xC), 64))
     };
@@ -171,6 +206,10 @@ split {
 
     if(vars.upgrades.Changed) {
         return settings["upgrade_"+(vars.upgrades.Current-vars.upgrades.Old)];
+    }
+
+    if(vars.unlockedHats.Changed) {
+        return settings["hat_"+(vars.unlockedHats.Current-vars.unlockedHats.Old)];
     }
 }
 
