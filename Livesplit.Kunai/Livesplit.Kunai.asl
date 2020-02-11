@@ -4,7 +4,7 @@ startup {
     refreshRate = 0.5;
 
     settings.Add("weapons", false, "Weapons");
-    settings.Add("bosses", false, "Bosses");
+    settings.Add("bosses", true, "Bosses");
     settings.Add("events", false, "Events");
     settings.Add("scenes", false, "Scenes (split at first enter)");
     settings.Add("perks", false, "Perks");
@@ -25,7 +25,7 @@ startup {
     settings.Add("event_32", false, "The Deprecator");
     settings.Add("event_64", false, "Furious Ferro");
     settings.Add("event_128", false, "Zensei");
-    settings.Add("event_lemonkus", true, "Lemonkus (test)");
+    settings.Add("event_lemonkus", true, "Lemonkus (End)");
     
     settings.CurrentDefaultParent = "events";
     settings.Add("event_8", false, "Resistance Camp Destroyed");
@@ -36,7 +36,6 @@ startup {
     settings.Add("event_2048", false, "Got Weapons Back");
     settings.Add("event_256", false, "Escaped From Prison");
     settings.Add("event_1", false, "Picked Up Air Base Core");
-    settings.Add("event_2", false, "Delivered Air Base Core");
     settings.Add("event_32768", false, "Flew To Mars");
     settings.Add("event_512", false, "Completed Dream Sequence");
 
@@ -82,35 +81,35 @@ startup {
     settings.Add("hat_1", false, "Monitor");
     settings.Add("hat_2", false, "Camo");
     settings.Add("hat_4", false, "Captain");
-    settings.Add("hat_8", false, "DesertViking");
+    settings.Add("hat_8", false, "Desert Viking");
     settings.Add("hat_16", false, "Knifi");
     settings.Add("hat_32", false, "Hard");
     settings.Add("hat_64", false, "Blindfold");
     settings.Add("hat_128", false, "Ferro");
     settings.Add("hat_256", false, "P0P0");
     settings.Add("hat_512", false, "Cap");
-    settings.Add("hat_1024", false, "CatEars");
+    settings.Add("hat_1024", false, "Cat Ears");
     settings.Add("hat_2048", false, "Earl");
-    settings.Add("hat_4096", false, "OniMask");
+    settings.Add("hat_4096", false, "Oni Mask");
     settings.Add("hat_8192", false, "Swek");
     settings.Add("hat_16384", false, "Tail");
     settings.Add("hat_32768", false, "Hood");
-    settings.Add("hat_65536", false, "BeerHat");
-    settings.Add("hat_131072", false, "CookingPot");
-    settings.Add("hat_262144", false, "DealWithIt");
+    settings.Add("hat_65536", false, "Beer Hat");
+    settings.Add("hat_131072", false, "Cooking Pot");
+    settings.Add("hat_262144", false, "Deal With It");
     settings.Add("hat_524288", false, "Deprecator");
     settings.Add("hat_1048576", false, "Plunger");
-    settings.Add("hat_2097152", false, "GangsterBandana");
+    settings.Add("hat_2097152", false, "Gangster Bandana");
     settings.Add("hat_4194304", false, "Headphones");
     settings.Add("hat_8388608", false, "Samurai");
     settings.Add("hat_16777216", false, "Scouter");
-    settings.Add("hat_33554432", false, "SuperTabbio");
-    settings.Add("hat_67108864", false, "SwagGlasses");
+    settings.Add("hat_33554432", false, "Super Tabbio");
+    settings.Add("hat_67108864", false, "Swag Glasses");
     settings.Add("hat_134217728", false, "Guardian");
-    settings.Add("hat_268435456", false, "TopHat");
+    settings.Add("hat_268435456", false, "Top Hat");
     settings.Add("hat_536870912", false, "Varken");
     settings.Add("hat_1073741824", false, "Wizard");
-    settings.Add("hat_-2147483648", false, "GarbageCollector");
+    settings.Add("hat_-2147483648", false, "Garbage Collector");
 
     vars.visitedScenes = new HashSet<string>();
 
@@ -162,16 +161,18 @@ init {
     if(ptrLoadingScreen == IntPtr.Zero || ptrGameState == IntPtr.Zero || ptrPlayerSystem == IntPtr.Zero || ptrLevelSystem == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
     
+    vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44));
+
+    vars.scytheUpgrade = new MemoryWatcher<bool>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0x48, 0x1C, 0x8C));
+    vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC));
+
     vars.watchers = new MemoryWatcherList() {
         (vars.isLoading = new MemoryWatcher<bool>(new DeepPointer(ptrLoadingScreen, 0x0, 0x20))),
 
-        (vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44))),
         (vars.weapons = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x50))),
         (vars.upgrades = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x54))),
         (vars.unlockedHats = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x60))),
         (vars.worldEvents = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x68))),
-
-        (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC))),
         
         (vars.actToLoad = new StringWatcher(new DeepPointer(ptrLevelSystem, 0x0, 0xC), 64))
     };
@@ -180,6 +181,7 @@ init {
 }
 
 start {
+    vars.playtime.Update(game);
     return !vars.isLoading.Old && vars.isLoading.Current && vars.playtime.Current == 0;
 }
 
@@ -196,8 +198,11 @@ split {
         return settings["event_"+(vars.worldEvents.Current-vars.worldEvents.Old)];
     }
 
-    if(vars.controlsDisableStack.Old == 1 && vars.controlsDisableStack.Current == 2 && vars.actToLoad.Current.Equals("Mars")) {
-        return settings["event_lemonkus"];
+    if(vars.actToLoad.Current.Equals("Mars")) {
+        vars.scytheUpgrade.Update(game);
+        vars.controlsDisableStack.Update(game);
+        if(vars.scytheUpgrade.Current && !vars.scytheUpgrade.Changed && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current > 0)
+            return settings["event_lemonkus"];
     }
 
     if(vars.actToLoad.Changed && vars.visitedScenes.Add(vars.actToLoad.Current)) {
