@@ -133,6 +133,7 @@ startup {
     vars.InitVars = (Action)(() => {
         vars.curSceneStatesCount = vars.oldSceneStatesCount = 0;
         vars.treasureDict = new Dictionary<string, int>();
+        vars.scytheWatch = new Stopwatch();
     });
 
     vars.InitVars();
@@ -203,6 +204,13 @@ update {
 
     vars.oldSceneStatesCount = vars.curSceneStatesCount;
     vars.curSceneStatesCount = game.ReadValue<int>((IntPtr)vars.sceneStates.Current+0x20);
+
+    if(vars.scytheUpgrade.Changed) {
+        if(vars.scytheUpgrade.Current)
+            vars.scytheWatch = Stopwatch.StartNew();
+        else
+            vars.scytheWatch.Reset();
+    }
 }
 
 start {
@@ -211,7 +219,8 @@ start {
 }
 
 split {
-    if(vars.scytheUpgrade.Current && !vars.scytheUpgrade.Changed && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current > 0) {
+    if(vars.scytheWatch.ElapsedMilliseconds > 1000 && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current == 1) {
+        vars.scytheWatch = new Stopwatch();
         return settings["event_lemonkus"];
     }
 
