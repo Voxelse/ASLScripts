@@ -10,6 +10,7 @@ startup {
     settings.Add("perks", false, "Perks");
     settings.Add("upgrades", false, "Upgrades");
     settings.Add("hats", false, "Hats");
+    settings.Add("hearts", false, "Hearts");
 
     settings.CurrentDefaultParent = "weapons";
     settings.Add("weapon_1", false, "Katana");
@@ -111,24 +112,45 @@ startup {
     settings.Add("hat_1073741824", false, "Wizard");
     settings.Add("hat_-2147483648", false, "Garbage Collector");
 
-    vars.visitedScenes = new HashSet<string>();
+    settings.CurrentDefaultParent = "hearts";
+    settings.Add("treasure_FallenCity16", false, "Fallen City Start");
+    settings.Add("treasure_FallenCity8", false, "Fallen City Boulders");
+    settings.Add("treasure_Factory8", false, "Factory Breakable Blocks");
+    settings.Add("treasure_Factory16", false, "Factory Mines");
+    settings.Add("treasure_Forest131072", false, "Forest Spikes");
+    settings.Add("treasure_Desert32", false, "Desert Alcove");
+    settings.Add("treasure_Desert128", false, "Desert Floating Path");
+    settings.Add("treasure_Desert64", false, "Desert Elevator");
+    settings.Add("treasure_Shrine16", false, "Shrine Hidden Room");
+    settings.Add("treasure_Shrine64", false, "Shrine QR Code");
+    settings.Add("treasure_Subway1", false, "Subnet Hidden Room");
+    settings.Add("treasure_ZenMountains32", false, "Zen Mountains Ceiling");
+    settings.Add("treasure_ZenMountains64", false, "Zen Mountains Spikes");
+    settings.Add("treasure_ZenMountains16", false, "Zen Mountains Waterfall");
+    settings.Add("treasure_City128", false, "Robopolis Bank");
+    settings.Add("treasure_City32", false, "Robopolis Pet Shop");
+
+    vars.InitVars = (Action)(() => {
+        vars.curSceneStatesCount = vars.oldSceneStatesCount = 0;
+        vars.treasureDict = new Dictionary<string, int>();
+    });
+
+    vars.InitVars();
 
     vars.ResetVars = (EventHandler)((s, e) => {
-        vars.visitedScenes = new HashSet<string>();
+        vars.InitVars();
     });
     timer.OnStart += vars.ResetVars;
 
     vars.scanLoadingScreen = new SigScanTarget(0x8, "55 8B EC 83 EC 28 8B 05 ?? ?? ?? ?? 89 04 24");
     vars.scanGameState = new SigScanTarget(0x24, "55 8B EC 83 EC 28 C7 04 24 ?? ?? ?? ?? 8B C0 E8 ?? ?? ?? ?? 89 45 FC 89 04 24 90 E8 ?? ?? ?? ?? 8B 4D FC B8 ?? ?? ?? ?? 89 08 C9 C3");
     vars.scanPlayerSystem = new SigScanTarget(0x1, "BA ?? ?? ?? ?? 8B C0 E8 ???????? 8B 40 0C 89 45 CC");
-    vars.scanLevelSystem = new SigScanTarget(0x6, "85 C0 74 06 8B 1D");
 }
 
 init {
     IntPtr ptrLoadingScreen = IntPtr.Zero;
     IntPtr ptrGameState = IntPtr.Zero;
     IntPtr ptrPlayerSystem = IntPtr.Zero;
-    IntPtr ptrLevelSystem = IntPtr.Zero;
 
     print("[Autosplitter] Scanning memory");
     foreach (var page in game.MemoryPages()) {
@@ -151,33 +173,36 @@ init {
         if(ptrPlayerSystem == IntPtr.Zero && (ptrPlayerSystem = scanner.Scan(vars.scanPlayerSystem)) != IntPtr.Zero)
             print("[Autosplitter] PlayerSystem Found : " + ptrPlayerSystem.ToString("X"));
 
-        if(ptrLevelSystem == IntPtr.Zero && (ptrLevelSystem = scanner.Scan(vars.scanLevelSystem)) != IntPtr.Zero)
-            print("[Autosplitter] LevelSystem Found : " + ptrLevelSystem.ToString("X"));
-
-        if(ptrLoadingScreen != IntPtr.Zero && ptrGameState != IntPtr.Zero && ptrPlayerSystem != IntPtr.Zero && ptrLevelSystem != IntPtr.Zero)
+        if(ptrLoadingScreen != IntPtr.Zero && ptrGameState != IntPtr.Zero && ptrPlayerSystem != IntPtr.Zero)
             break;
     }
 
-    if(ptrLoadingScreen == IntPtr.Zero || ptrGameState == IntPtr.Zero || ptrPlayerSystem == IntPtr.Zero || ptrLevelSystem == IntPtr.Zero)
+    if(ptrLoadingScreen == IntPtr.Zero || ptrGameState == IntPtr.Zero || ptrPlayerSystem == IntPtr.Zero)
         throw new Exception("[Autosplitter] Can't find signature");
     
     vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44));
 
-    vars.scytheUpgrade = new MemoryWatcher<bool>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0x48, 0x1C, 0x8C));
-    vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC));
-
     vars.watchers = new MemoryWatcherList() {
         (vars.isLoading = new MemoryWatcher<bool>(new DeepPointer(ptrLoadingScreen, 0x0, 0x20))),
 
+        (vars.sceneStates = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x34))),
         (vars.weapons = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x50))),
         (vars.upgrades = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x54))),
         (vars.unlockedHats = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x60))),
         (vars.worldEvents = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x68))),
         
-        (vars.actToLoad = new StringWatcher(new DeepPointer(ptrLevelSystem, 0x0, 0xC), 64))
+        (vars.scytheUpgrade = new MemoryWatcher<bool>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0x48, 0x1C, 0x8C))),
+        (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC)))
     };
 
     refreshRate = 200/3d;
+}
+
+update {
+    vars.watchers.UpdateAll(game);
+
+    vars.oldSceneStatesCount = vars.curSceneStatesCount;
+    vars.curSceneStatesCount = game.ReadValue<int>((IntPtr)vars.sceneStates.Current+0x20);
 }
 
 start {
@@ -185,11 +210,11 @@ start {
     return !vars.isLoading.Old && vars.isLoading.Current && vars.playtime.Current == 0;
 }
 
-update {
-    vars.watchers.UpdateAll(game);
-}
-
 split {
+    if(vars.scytheUpgrade.Current && !vars.scytheUpgrade.Changed && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current > 0) {
+        return settings["event_lemonkus"];
+    }
+
     if(vars.weapons.Changed) {
         return settings["weapon_"+(vars.weapons.Current-vars.weapons.Old)];
     }
@@ -198,23 +223,33 @@ split {
         return settings["event_"+(vars.worldEvents.Current-vars.worldEvents.Old)];
     }
 
-    if(vars.actToLoad.Current.Equals("Mars")) {
-        vars.scytheUpgrade.Update(game);
-        vars.controlsDisableStack.Update(game);
-        if(vars.scytheUpgrade.Current && !vars.scytheUpgrade.Changed && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current > 0)
-            return settings["event_lemonkus"];
-    }
-
-    if(vars.actToLoad.Changed && vars.visitedScenes.Add(vars.actToLoad.Current)) {
-        return settings["scene_"+vars.actToLoad.Current];
-    }
-
     if(vars.upgrades.Changed) {
         return settings["upgrade_"+(vars.upgrades.Current-vars.upgrades.Old)];
     }
 
     if(vars.unlockedHats.Changed) {
         return settings["hat_"+(vars.unlockedHats.Current-vars.unlockedHats.Old)];
+    }
+
+    if(vars.oldSceneStatesCount < vars.curSceneStatesCount) {
+        return settings["scene_"+game.ReadString((IntPtr)(game.ReadPointer((IntPtr)(game.ReadPointer((IntPtr)(vars.sceneStates.Current+0xC))+0x18+0x10*(vars.curSceneStatesCount-1)))+0xC), 64)];
+    }
+
+    if(settings["hearts"]) {
+        IntPtr entries = game.ReadPointer((IntPtr)(vars.sceneStates.Current+0xC));
+        for(int sceneStateOffset = 0; sceneStateOffset < vars.curSceneStatesCount; sceneStateOffset++) {
+            string sceneName = game.ReadString((IntPtr)(game.ReadPointer((IntPtr)(entries+0x18+0x10*sceneStateOffset))+0xC), 64);
+            int treasures = game.ReadValue<int>((IntPtr)(game.ReadPointer((IntPtr)(entries+0x1C+0x10*sceneStateOffset))+0x24));
+
+            if(!vars.treasureDict.ContainsKey(sceneName))
+                vars.treasureDict.Add(sceneName, 0);
+
+            if(vars.treasureDict[sceneName] != treasures) {
+                int newTreasure = treasures-vars.treasureDict[sceneName];
+                vars.treasureDict[sceneName] = treasures;
+                return settings["treasure_"+sceneName+newTreasure];
+            }
+        }
     }
 }
 
