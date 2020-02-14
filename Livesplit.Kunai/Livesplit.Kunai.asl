@@ -219,29 +219,29 @@ start {
 }
 
 split {
-    if(vars.scytheWatch.ElapsedMilliseconds > 1000 && vars.controlsDisableStack.Old == 0 && vars.controlsDisableStack.Current == 1) {
-        vars.scytheWatch = new Stopwatch();
+    if(vars.weapons.Changed && settings["weapon_"+(vars.weapons.Current-vars.weapons.Old)]) {
+        return true;
+    }
+
+    if(vars.worldEvents.Changed && settings["event_"+(vars.worldEvents.Current-vars.worldEvents.Old)]) {
+        return true;
+    }
+
+    if(vars.oldSceneStatesCount < vars.curSceneStatesCount && settings["scene_"+game.ReadString((IntPtr)(game.ReadPointer((IntPtr)(game.ReadPointer((IntPtr)(vars.sceneStates.Current+0xC))+0x18+0x10*(vars.curSceneStatesCount-1)))+0xC), 64)]) {
+        return true;
+    }
+
+    if(vars.upgrades.Changed && settings["upgrade_"+(vars.upgrades.Current-vars.upgrades.Old)]) {
+        return true;
+    }
+
+    if(vars.unlockedHats.Changed && settings["hat_"+(vars.unlockedHats.Current-vars.unlockedHats.Old)]) {
+        return true;
+    }
+
+    if(vars.scytheWatch.ElapsedMilliseconds > 1000 && vars.controlsDisableStack.Current == 1 && vars.controlsDisableStack.Old == 0) {
+        vars.scytheWatch.Reset();
         return settings["event_lemonkus"];
-    }
-
-    if(vars.weapons.Changed) {
-        return settings["weapon_"+(vars.weapons.Current-vars.weapons.Old)];
-    }
-
-    if(vars.worldEvents.Changed) {
-        return settings["event_"+(vars.worldEvents.Current-vars.worldEvents.Old)];
-    }
-
-    if(vars.upgrades.Changed) {
-        return settings["upgrade_"+(vars.upgrades.Current-vars.upgrades.Old)];
-    }
-
-    if(vars.unlockedHats.Changed) {
-        return settings["hat_"+(vars.unlockedHats.Current-vars.unlockedHats.Old)];
-    }
-
-    if(vars.oldSceneStatesCount < vars.curSceneStatesCount) {
-        return settings["scene_"+game.ReadString((IntPtr)(game.ReadPointer((IntPtr)(game.ReadPointer((IntPtr)(vars.sceneStates.Current+0xC))+0x18+0x10*(vars.curSceneStatesCount-1)))+0xC), 64)];
     }
 
     if(settings["hearts"]) {
