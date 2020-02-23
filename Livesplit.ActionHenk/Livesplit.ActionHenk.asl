@@ -56,9 +56,6 @@ startup {
         new int[] {98, 99, 100, 101, 102, 104, 103}
     };
 
-    // Number of medals sorted by batches
-    vars.levelsMedals = Enumerable.Range(0, 11).Select(i => new int[7]).ToArray();
-
     // Can't use enum so put GUIScreens in vars instead
     vars.GUIScreen_MainMenu    =  1;
     vars.GUIScreen_Loading     =  5;
@@ -67,15 +64,6 @@ startup {
     vars.GUIScreen_PostGame    = 10;
     vars.GUIScreen_Cutscene    = 11; // Actually GUIScreen_None
     vars.GUIScreen_BatchSelect = 37;
-
-    // Number of medals the player had/has earned
-    vars.curSumMedals = vars.oldSumMedals = 0;
-    // Number of batches the player had/has completed (counts if all normal levels are completed with at least bronze)
-    vars.curFullBatches = vars.oldFullBatches = 0;
-    // Number of perfect batches the player had/has completed (counts if all normal levels are completed with rainbow)
-    vars.curRainbowBatches = vars.oldRainbowBatches = 0;
-    // Number of batches the player had/has fully completed (counts if all normal levels are completed with rainbow, and the challenge and bonus level were beaten)
-    vars.curCompletedBatches = vars.oldCompletedBatches = 0;
 
     // Reset tracker variables
     vars.textSettingReset = null;
@@ -132,8 +120,26 @@ startup {
         return textComponent.Settings;
     });
 
+    vars.InitVars = (Action)(() => {
+        // Number of medals sorted by batches
+        vars.levelsMedals = Enumerable.Range(0, 11).Select(i => new int[7]).ToArray();
+
+        // Number of medals the player had/has earned
+        vars.curSumMedals = vars.oldSumMedals = 0;
+        // Number of batches the player had/has completed (counts if all normal levels are completed with at least bronze)
+        vars.curFullBatches = vars.oldFullBatches = 0;
+        // Number of perfect batches the player had/has completed (counts if all normal levels are completed with rainbow)
+        vars.curRainbowBatches = vars.oldRainbowBatches = 0;
+        // Number of batches the player had/has fully completed (counts if all normal levels are completed with rainbow, and the challenge and bonus level were beaten)
+        vars.curCompletedBatches = vars.oldCompletedBatches = 0;
+    });
+
+    vars.InitVars();
+
     // Function called when the timer start to reset local variables
     vars.ResetVars = (EventHandler)((s, e) => {
+        vars.InitVars();
+        
         if(settings["medal_tracking"]) {
             vars.medalsTypeCount = new int[5];
             vars.UpdateMedalTracker();
@@ -142,10 +148,6 @@ startup {
             vars.totalResets = 0;
             vars.UpdateResetTracker();
         }
-        vars.curSumMedals = vars.oldSumMedals = 0;
-        vars.curFullBatches = vars.oldFullBatches = 0;
-        vars.curRainbowBatches = vars.oldRainbowBatches = 0;
-        vars.curCompletedBatches = vars.oldCompletedBatches = 0;
     });
     timer.OnStart += vars.ResetVars;
 
