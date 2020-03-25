@@ -53,7 +53,7 @@ startup {
         new int[] {74, 10, 25, 75, 76, 78, 77},
         new int[] {79, 21, 19, 80, 31, 82, 81},
         new int[] {83, 84, 85, 86, 87, 89, 88},
-        new int[] {98, 99, 100, 101, 102, 104, 103}
+        new int[] {98, 99,100,101,102,104,103}
     };
 
     // Can't use enum so put GUIScreens in vars instead
@@ -124,13 +124,13 @@ startup {
         // Number of medals sorted by batches
         vars.levelsMedals = Enumerable.Range(0, 11).Select(i => new int[7]).ToArray();
 
-        // Number of medals the player had/has earned
+        // Number of medals the player has earned
         vars.curSumMedals = vars.oldSumMedals = 0;
-        // Number of batches the player had/has completed (counts if all normal levels are completed with at least bronze)
+        // Number of batches the player has completed (counts if all normal levels are completed with at least bronze)
         vars.curFullBatches = vars.oldFullBatches = 0;
-        // Number of perfect batches the player had/has completed (counts if all normal levels are completed with rainbow)
+        // Number of perfect batches the player has completed (counts if all normal levels are completed with rainbow)
         vars.curRainbowBatches = vars.oldRainbowBatches = 0;
-        // Number of batches the player had/has fully completed (counts if all normal levels are completed with rainbow, and the challenge and bonus level were beaten)
+        // Number of batches the player has fully completed (counts if all normal levels are completed with rainbow, and the challenge/bonus levels are beaten)
         vars.curCompletedBatches = vars.oldCompletedBatches = 0;
     });
 
@@ -257,15 +257,16 @@ update {
             int[] batchMedals = vars.levelsMedals[batchId];
             batchIsFull = batchIsRainbow = batchIsCompleted = true;
             for (int levelId = 0; levelId < batchMedals.Length; levelId++) {
-                if(batchMedals[levelId] == 0) {
-                    if(levelId < 5) {
+                int numMedals = batchMedals[levelId];
+                if(numMedals == 0) {
+                    if(levelId < 5 || (levelId == 5 && (batchId == 4 || batchId == 8))) {
                         batchIsFull = batchIsRainbow = batchIsCompleted = false;
                         break;
-                    } else if (levelId == 5 && (batchId == 4 || batchId == 8)) {
-                        batchIsFull = batchIsRainbow = false;
                     } else {
                         batchIsFull = false;
                     }
+                } else if(numMedals < 4 && levelId < 5) {
+                    batchIsFull = batchIsRainbow = false;
                 }
             }
             if(batchIsFull) ++vars.curFullBatches;
@@ -294,7 +295,7 @@ update {
             int indexOfLevel = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
             // If the level is a Challenge/Bonus, check for Bronze/Bonus time otherwise find the greatest medal earned
             if(indexOfLevel > 4) {
-                if(vars.finishTime.Current < game.ReadValue<float>((IntPtr)(vars.trackTimePtr.Current+0x40+(indexOfLevel == 6 ? 0x10 : 0x0)))) {
+                if(vars.finishTime.Current < game.ReadValue<float>((IntPtr)(vars.trackTimePtr.Current+(indexOfLevel == 5 ? 0x40 : 0x50)))) {
                     ++vars.medalsTypeCount[0];
                     vars.UpdateMedalTracker();
                 }
@@ -325,7 +326,7 @@ split {
     if(settings["category_any"]) {
         // Check if a new batch is unlocked
         if(vars.oldSumMedals < vars.curSumMedals) {
-            for (int id = 0; id < vars.anyMedalsUnlock.length; id++) {
+            for (int id = 0; id < vars.anyMedalsUnlock.Length; id++) {
                 if(vars.oldSumMedals < vars.anyMedalsUnlock[id] && vars.curSumMedals >= vars.anyMedalsUnlock[id])
                     return settings["any_"+vars.anyMedalsUnlock[id]];
             }
