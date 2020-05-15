@@ -1,4 +1,4 @@
-state ("TheMessenger") {} // Need to find why the game is sometimes using 32bit pointers on 64bit versions in order to simplify the pointers updates
+state ("TheMessenger") {}
 
 startup {
     refreshRate = 0.5;
@@ -7,8 +7,8 @@ startup {
     settings.Add("LevelsDLC1", true, "Levels (Picnic Panic)");
     settings.Add("Inventory", false, "Inventory");
     settings.Add("Checkpoints", false, "Checkpoints");
-    settings.Add("RoomTimer", false, "Individual Room Timer");
     settings.Add("ILStart", false, "Start for IL Practice");
+    settings.Add("RoomTimer", false, "Individual Room Timer. Requires to reload the autosplitter and to load at least a save since game's boot up");
 
     settings.CurrentDefaultParent = "Levels";
     settings.Add("01_NinjaVillage", false, "Ninja Village");
@@ -359,17 +359,17 @@ startup {
     vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
     vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
     vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
-    vars.scanDLCManager = new SigScanTarget(17, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
-    vars.scanGameManager = new SigScanTarget(6, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
+    vars.scanDLCManager = new SigScanTarget(0, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
+    vars.scanGameManager = new SigScanTarget(0, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
     vars.ResetVars = (Action)(() => {
-        vars.oldSceneName = vars.currentSceneName = "";
-        vars.oldInventorySize = vars.currentInventorySize = 0;
-        vars.oldInventoryCount = vars.currentInventoryCount = 0;
-        vars.oldCheckpointIndex = vars.currentCheckpointIndex = 0;
-        vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount = 0;
-        vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount = 0;
-        vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount = 0;
+        vars.oldSceneName = vars.curSceneName = "";
+        vars.oldInventorySize = vars.curInventorySize = 0;
+        vars.oldInventoryCount = vars.curInventoryCount = 0;
+        vars.oldCheckpointIndex = vars.curCheckpointIndex = 0;
+        vars.oldBossesDefeatedCount = vars.curBossesDefeatedCount = 0;
+        vars.oldCutscenesPlayedCount = vars.curCutscenesPlayedCount = 0;
+        vars.oldChallengeRoomsCompletedCount = vars.curChallengeRoomsCompletedCount = 0;
         vars.oldUseWindmill = vars.curUseWindmill = false;
         vars.windmillUnlocked = false;
 
@@ -382,10 +382,9 @@ startup {
         vars.itemNb = new List<int>();
         vars.itemsToSplit = new Queue<string>();
 
-        vars.roomTimer = new Stopwatch();
-        vars.previousRoomTime = vars.actualRoomTime = "0.00";
-        vars.lastRoomKey = vars.oldRoomKey = vars.currentRoomKey = "";
         vars.gameManagerAddr = new MemoryWatcher<IntPtr>(IntPtr.Zero);
+        vars.lastRoomKey = vars.oldRoomKey = vars.curRoomKey = "";
+        vars.roomTimer = new Stopwatch();
 
         vars.quarbleInDone = vars.quarbleAnim = IntPtr.Zero;
 
@@ -393,20 +392,20 @@ startup {
     });
 
     vars.UpdatePointers = (Action<Process>)((proc) => {
-        vars.oldSceneName = vars.currentSceneName;
-        vars.currentSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerSig, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
-        if(vars.currentSceneName == null) vars.currentSceneName = "";
+        vars.oldSceneName = vars.curSceneName;
+        vars.curSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerSig, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
+        if(vars.curSceneName == null) vars.curSceneName = "";
 
         vars.progressionManagerPtr = vars.ReadPointers(proc, vars.progressionManagerSig, new int[] {vars.instructionsOffset[1], 0x0});
-        vars.oldCheckpointIndex = vars.currentCheckpointIndex;
-        vars.currentCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x30)+0x38);
-        vars.oldBossesDefeatedCount = vars.currentBossesDefeatedCount;
-        vars.currentBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x60)+0x18);
+        vars.oldCheckpointIndex = vars.curCheckpointIndex;
+        vars.curCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x30)+0x38);
+        vars.oldBossesDefeatedCount = vars.curBossesDefeatedCount;
+        vars.curBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x60)+0x18);
         vars.cutscenesPlayedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x78, 0x10});
-        vars.oldCutscenesPlayedCount = vars.currentCutscenesPlayedCount;
-        vars.currentCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x78)+0x18);
-        vars.oldChallengeRoomsCompletedCount = vars.currentChallengeRoomsCompletedCount;
-        vars.currentChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x90)+0x18);
+        vars.oldCutscenesPlayedCount = vars.curCutscenesPlayedCount;
+        vars.curCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x78)+0x18);
+        vars.oldChallengeRoomsCompletedCount = vars.curChallengeRoomsCompletedCount;
+        vars.curChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x90)+0x18);
         vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x90, 0x10});
         vars.oldUseWindmill = vars.curUseWindmill;
         vars.curUseWindmill = proc.ReadValue<bool>((IntPtr)vars.progressionManagerPtr+0xEB);
@@ -414,10 +413,10 @@ startup {
         IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerSig, new int[] {vars.instructionsOffset[2], 0x0, 0x78, 0x20});
         vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
         vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
-        vars.oldInventorySize = vars.currentInventorySize;
-        vars.currentInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
-        vars.oldInventoryCount = vars.currentInventoryCount;
-        vars.currentInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
+        vars.oldInventorySize = vars.curInventorySize;
+        vars.curInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
+        vars.oldInventoryCount = vars.curInventoryCount;
+        vars.curInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
 
         if(vars.quarbleUIOffset == 0x0) {
             if(vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
@@ -452,17 +451,15 @@ startup {
     });
 
     vars.UpdateRoomTimer = (Action<Process, bool>)((proc, inMenu) => {
-        if(vars.textSettingCurrent == null || vars.textSettingPrevious == null) {
+        if(vars.textSettingLast == null) {
             foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name != "TextComponent") continue;
-                if (component.Settings.Text1 == "Current Room") vars.textSettingCurrent = component.Settings;
-                if (component.Settings.Text1 == "Previous Room") vars.textSettingPrevious = component.Settings;
+                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Last Room") {
+                    vars.textSettingLast = component.Settings;
+                    break;
+                }
             }
-
-            if(vars.textSettingCurrent == null)
-                vars.textSettingCurrent = vars.CreateTextComponent("Current Room");
-            if(vars.textSettingPrevious == null)
-                vars.textSettingPrevious = vars.CreateTextComponent("Previous Room");
+            if(vars.textSettingLast == null)
+                vars.textSettingLast = vars.CreateTextComponent("Last Room", "0.00");
         }
 
         if(!inMenu && timer.CurrentPhase == TimerPhase.Running) {
@@ -472,37 +469,35 @@ startup {
                 vars.gameManagerAddr.Update(proc);
             }
 
-            vars.oldRoomKey = vars.currentRoomKey;
-            vars.currentRoomKey = proc.ReadString(proc.ReadPointer(proc.ReadPointer(proc.ReadPointer((IntPtr)vars.gameManagerAddr.Current+0x18)+0x98)+0x10)+0x14, 32);
-            if(vars.oldRoomKey != vars.currentRoomKey) {
-                if(vars.currentRoomKey == null) {
+            vars.oldRoomKey = vars.curRoomKey;
+            vars.curRoomKey = proc.ReadString((IntPtr)vars.ReadPointers(proc, (IntPtr)vars.gameManagerAddr.Current, new int[] {0x18, 0x98, 0x10})+0x14, 32);
+            if(vars.oldRoomKey != vars.curRoomKey) {
+                if(vars.curRoomKey == null) {
                     vars.roomTimer.Stop(); //Stop during loading
                 } else {
                     if(vars.oldRoomKey == null) {
-                        if(vars.lastRoomKey == vars.currentRoomKey) {
+                        if(vars.lastRoomKey == vars.curRoomKey) {
                             vars.roomTimer.Start(); //Resume after loading
                         } else {
-                            vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+                            vars.textSettingLast.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
                             vars.roomTimer.Restart(); //Restart after loading
                         }
                     } else {
-                        vars.previousRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
+                        vars.textSettingLast.Text2 = vars.FormatTimer(vars.roomTimer.Elapsed);
                         vars.roomTimer.Restart(); //Restart
                     }
-                    vars.lastRoomKey = vars.currentRoomKey;
+                    vars.lastRoomKey = vars.curRoomKey;
                 }
             }
-            vars.actualRoomTime = vars.FormatTimer(vars.roomTimer.Elapsed);
         }
-        vars.textSettingCurrent.Text2 = timer.CurrentPhase == TimerPhase.Running ? vars.actualRoomTime : "0.00";
-        vars.textSettingPrevious.Text2 = timer.CurrentPhase == TimerPhase.Running ? vars.previousRoomTime : "0.00";
     });
 
-    vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
+    vars.CreateTextComponent = (Func<string, string, dynamic>)((name, value) => {
         var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
         dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
         timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
         textComponent.Settings.Text1 = name;
+        textComponent.Settings.Text2 = value;
         return textComponent.Settings;
     });
 
@@ -511,7 +506,7 @@ startup {
     });
 
     vars.CleanSceneName = (Func<string>)(() => {
-        return (vars.currentSceneName.EndsWith("_Build")) ? vars.currentSceneName.Substring(0, vars.currentSceneName.Length-6) : vars.currentSceneName;
+        return (vars.curSceneName.EndsWith("_Build")) ? vars.curSceneName.Substring(0, vars.curSceneName.Length-6) : vars.curSceneName;
     });
 
     vars.ClearSplitString = (Action<Process, int>)((proc, listOffset) => {
@@ -586,9 +581,18 @@ init {
     });
     timer.OnStart += vars.timerResetVars;
 
-    vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x109, 0x70, 0xE, -0x93, 0x0, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x0, 0x0};
-    vars.textSettingCurrent = vars.textSettingPrevious = null;
+    vars.timerResetDisplay = (LiveSplit.Model.Input.EventHandlerT<TimerPhase>)((s, e) => {
+        if(vars.textSettingLast != null)
+            vars.textSettingLast.Text2 = "0.00";
+    });
+    timer.OnReset += vars.timerResetDisplay;
+
+    // Obsolete. Needs to refind the offsets of some 32bit versions
+    // vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
+    vars.use32bit = false;
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x11, 0x6};
+    
+    vars.textSettingLast = null;
 
     vars.quarbleUIOffset = 0x0;
 
@@ -602,7 +606,7 @@ init {
 update {
     vars.UpdatePointers(game);
 
-    bool inMenu = vars.currentSceneName.Length < 8 || vars.oldSceneName.Length < 8;
+    bool inMenu = vars.curSceneName.Length < 8 || vars.oldSceneName.Length < 8;
 
     if(settings["RoomTimer"]) vars.UpdateRoomTimer(game, inMenu);
 
@@ -622,9 +626,9 @@ update {
         vars.itemNb[vars.timeshardOffset] = game.ReadValue<int>((IntPtr)(vars.inventoryNbAddr+0x20+0x4*vars.timeshardOffset));
     }
 
-    if((vars.oldInventoryCount != vars.currentInventoryCount) || (vars.oldInventorySize != vars.currentInventorySize) || (vars.timeshardOffset != -1 && vars.oldTimeshardAmount > vars.itemNb[vars.timeshardOffset])) {
+    if((vars.oldInventoryCount != vars.curInventoryCount) || (vars.oldInventorySize != vars.curInventorySize) || (vars.timeshardOffset != -1 && vars.oldTimeshardAmount > vars.itemNb[vars.timeshardOffset])) {
         bool firstAdd = vars.itemId.Count == 0;
-        for(int offset = 0; offset < vars.currentInventorySize; offset++) {
+        for(int offset = 0; offset < vars.curInventorySize; offset++) {
             var id = game.ReadValue<int>((IntPtr)(vars.inventoryIdAddr+0x20+0x4*offset));
             var nb = game.ReadValue<int>((IntPtr)(vars.inventoryNbAddr+0x20+0x4*offset));
 
@@ -648,14 +652,14 @@ update {
 }
 
 start {
-    return vars.currentSceneName.StartsWith((settings["ILStart"] ? "Level_" : "Level_01")) && vars.oldSceneName.Length < 8 || (vars.curDLCSelectionDone && vars.oldDLCSelectionDone != vars.curDLCSelectionDone);
+    return vars.curSceneName.StartsWith((settings["ILStart"] ? "Level_" : "Level_01")) && vars.oldSceneName.Length < 8 || (vars.curDLCSelectionDone && vars.oldDLCSelectionDone != vars.curDLCSelectionDone);
 }
 
 split {
-    if(vars.oldSceneName != vars.currentSceneName && vars.oldSceneName.Length > 8 && vars.currentSceneName.Length > 8 && vars.visitedLevels.Add(vars.currentSceneName))
+    if(vars.oldSceneName != vars.curSceneName && vars.oldSceneName.Length > 8 && vars.curSceneName.Length > 8 && vars.visitedLevels.Add(vars.curSceneName))
         return settings[vars.CleanSceneName()];
 
-    if(vars.oldBossesDefeatedCount < vars.currentBossesDefeatedCount)
+    if(vars.oldBossesDefeatedCount < vars.curBossesDefeatedCount)
         return settings["Boss_"+vars.CleanSceneName().Substring(6)];
 
     while(vars.itemsToSplit.Count > 0) {
@@ -666,14 +670,14 @@ split {
         }
     }
 
-    if(vars.oldChallengeRoomsCompletedCount != vars.currentChallengeRoomsCompletedCount)
-        return settings["Seal_"+vars.ReadString(game, vars.challengeRoomsCompletedAddr, vars.currentChallengeRoomsCompletedCount)];
+    if(vars.oldChallengeRoomsCompletedCount != vars.curChallengeRoomsCompletedCount)
+        return settings["Seal_"+vars.ReadString(game, vars.challengeRoomsCompletedAddr, vars.curChallengeRoomsCompletedCount)];
 
-    if(vars.oldCheckpointIndex != vars.currentCheckpointIndex && vars.currentCheckpointIndex > -1 && vars.savedCheckpoints.Add(vars.currentSceneName+"_"+vars.currentCheckpointIndex))
-        return settings["Checkpoint_"+vars.CleanSceneName().Substring(6)+"_"+vars.currentCheckpointIndex];
+    if(vars.oldCheckpointIndex != vars.curCheckpointIndex && vars.curCheckpointIndex > -1 && vars.savedCheckpoints.Add(vars.curSceneName+"_"+vars.curCheckpointIndex))
+        return settings["Checkpoint_"+vars.CleanSceneName().Substring(6)+"_"+vars.curCheckpointIndex];
 
-    if(vars.oldCutscenesPlayedCount != vars.currentCutscenesPlayedCount) {
-        string cutsceneSplit = "Cutscene_"+vars.ReadString(game, vars.cutscenesPlayedAddr, vars.currentCutscenesPlayedCount);
+    if(vars.oldCutscenesPlayedCount != vars.curCutscenesPlayedCount) {
+        string cutsceneSplit = "Cutscene_"+vars.ReadString(game, vars.cutscenesPlayedAddr, vars.curCutscenesPlayedCount);
         return settings.ContainsKey(cutsceneSplit) && settings[cutsceneSplit];
     }
 
@@ -689,4 +693,5 @@ isLoading {
 
 shutdown {
     timer.OnStart -= vars.timerResetVars;
+    timer.OnReset -= vars.timerResetDisplay;
 }
