@@ -1,8 +1,6 @@
 state ("Flinthook") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("s", true, "Split at each ship");
 
     settings.Add("1", true, "Bad Billy Bullseye");
@@ -26,42 +24,10 @@ startup {
     settings.Add("4_12", true, "Baron Von Guu", "4");
     settings.Add("4_13", true, "Gwarlock", "4");
 
-    vars.gameInfoTarget = new SigScanTarget(6, "55 8B EC 56 83 3D ?? ?? ?? ?? 00 75 18");
-    vars.totalMissionTimeTarget = new SigScanTarget(13, "55 8B EC 57 56 53 83 EC 10 8B F1 8B 0D");
-
     vars.InitVars = (Action)(() => {
         vars.sumBountyTimes = 0;
         vars.trackTotalMissionTime = true;
     });
-}
-
-init {
-    bool instructionsFound = false;
-    IntPtr gameInfoPtr = IntPtr.Zero;
-    IntPtr contextInfoPtr = IntPtr.Zero;
-
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-
-        if(gameInfoPtr == IntPtr.Zero) {
-            IntPtr ptrGameInfoOrDropManager = scanner.Scan(vars.gameInfoTarget);
-            if(ptrGameInfoOrDropManager != IntPtr.Zero && game.ReadValue<int>(game.ReadPointer(game.ReadPointer(ptrGameInfoOrDropManager))+0x14) != 1) {
-                gameInfoPtr = ptrGameInfoOrDropManager;
-                print("[Autosplitter] GameInfo Found : " + gameInfoPtr.ToString("X"));
-            }
-        }
-
-        if(contextInfoPtr == IntPtr.Zero && (contextInfoPtr = scanner.Scan(vars.totalMissionTimeTarget)) != IntPtr.Zero)
-            print("[Autosplitter] ContextInfo Found : " + contextInfoPtr.ToString("X"));
-
-        instructionsFound = gameInfoPtr != IntPtr.Zero && contextInfoPtr != IntPtr.Zero;
-        if(instructionsFound)
-            break;
-    }
-
-    if (!instructionsFound)
-        throw new Exception("[Autosplitter] Can't find signature");
 
     vars.InitVars();
 
@@ -69,23 +35,60 @@ init {
         vars.InitVars();
     });
     timer.OnStart += vars.timerResetVars;
+}
 
-    int relGameInfoPtr = (int)((long)gameInfoPtr - (long)modules.First().BaseAddress);
-    int relContextInfoPtr = (int)((long)contextInfoPtr - (long)modules.First().BaseAddress);
+init {
+    vars.threadScan = new Thread(() => {
+        var gameInfoTarget = new SigScanTarget(6, "55 8B EC 56 83 3D ?? ?? ?? ?? 00 75 18");
+        var totalMissionTimeTarget = new SigScanTarget(13, "55 8B EC 57 56 53 83 EC 10 8B F1 8B 0D");
 
-    vars.watchers = new MemoryWatcherList() {
-        (vars.runProgression = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C))),
-        (vars.bountyType = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x30))),
-        (vars.missionsCompleted = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x34))),
-        (vars.totalBountyTime = new MemoryWatcher<float>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x40))),
-        (vars.contextInfo = new MemoryWatcher<int>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8))),
-        (vars.totalMissionTime = new MemoryWatcher<float>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8, 0x58))),
-    };
+        IntPtr gameInfoPtr = IntPtr.Zero;
+        IntPtr contextInfoPtr = IntPtr.Zero;
+    
+        while(gameInfoPtr == IntPtr.Zero || contextInfoPtr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-    refreshRate = 200/3d;
+                if(gameInfoPtr == IntPtr.Zero) {
+                    IntPtr ptrGameInfoOrDropManager = scanner.Scan(gameInfoTarget);
+                    if(ptrGameInfoOrDropManager != IntPtr.Zero && game.ReadValue<int>(game.ReadPointer(game.ReadPointer(ptrGameInfoOrDropManager))+0x14) != 1) {
+                        gameInfoPtr = ptrGameInfoOrDropManager;
+                        print("[Autosplitter] GameInfo Found : " + gameInfoPtr.ToString("X"));
+                    }
+                }
+
+                if(contextInfoPtr == IntPtr.Zero && (contextInfoPtr = scanner.Scan(totalMissionTimeTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] ContextInfo Found : " + contextInfoPtr.ToString("X"));
+
+                if(gameInfoPtr != IntPtr.Zero && contextInfoPtr != IntPtr.Zero)
+                    break;
+            }
+            if (gameInfoPtr != IntPtr.Zero && contextInfoPtr != IntPtr.Zero) {
+                int relGameInfoPtr = (int)((long)gameInfoPtr - (long)modules.First().BaseAddress);
+                int relContextInfoPtr = (int)((long)contextInfoPtr - (long)modules.First().BaseAddress);
+
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.runProgression = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C))),
+                    (vars.bountyType = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x30))),
+                    (vars.missionsCompleted = new MemoryWatcher<int>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x34))),
+                    (vars.totalBountyTime = new MemoryWatcher<float>(new DeepPointer((int)relGameInfoPtr, 0x0, 0x6C, 0x40))),
+                    (vars.contextInfo = new MemoryWatcher<int>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8))),
+                    (vars.totalMissionTime = new MemoryWatcher<float>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8, 0x58))),
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
     
     if(vars.runProgression.Changed) return false;
@@ -122,5 +125,6 @@ gameTime {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.timerResetVars;
 }

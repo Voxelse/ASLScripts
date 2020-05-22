@@ -1,8 +1,6 @@
 state("Vignettes") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("end", true, "Reach Credits (End)");
     settings.Add("ports", false, "Complete Portraits");
     settings.Add("secs", false, "Find Secrets");
@@ -137,6 +135,8 @@ startup {
         vars.portraitObjects = new Dictionary<string, HashSet<int>>();
     });
 
+    vars.InitVars();
+
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.InitVars();
 
@@ -155,23 +155,9 @@ startup {
         };
     });
     timer.OnStart += vars.timerResetVars;
-
-    vars.target = new SigScanTarget(10, "89 85 50 FF FF FF 48 8B 0C 25 ?? ?? ?? ??");
 }
 
 init {
-    print("[Autosplitter] Scanning memory");
-
-    vars.ptr = IntPtr.Zero;
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        if((vars.ptr = scanner.Scan(vars.target)) != IntPtr.Zero)
-            break;
-    }
-
-    if (vars.ptr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
     vars.ReadPointer = (Func<IntPtr, IntPtr>)((basePtr) => {
         IntPtr ptr = basePtr;
         game.ReadPointer((IntPtr)(ptr), false, out ptr);
@@ -184,13 +170,32 @@ init {
             game.ReadPointer((IntPtr)(ptr+offset), false, out ptr);
         return ptr;
     });
-
-    vars.InitVars();
-
-    refreshRate = 200/3d;
+    
+    vars.ptr = IntPtr.Zero;
+    
+    vars.threadScan = new Thread(() => {
+        var target = new SigScanTarget(10, "89 85 50 FF FF FF 48 8B 0C 25 ?? ?? ?? ??");
+        
+        while(vars.ptr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+                if((vars.ptr = scanner.Scan(target)) != IntPtr.Zero)
+                    break;
+            }
+            if (vars.ptr == IntPtr.Zero) {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(vars.ptr == IntPtr.Zero)
+        return false;
+
     vars.split = "";
 
     IntPtr r = vars.ReadPointers(vars.ptr, new int[] {0x0, 0x0});
@@ -250,5 +255,6 @@ reset {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.timerResetVars;
 }

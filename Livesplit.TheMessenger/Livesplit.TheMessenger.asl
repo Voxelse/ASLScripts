@@ -1,8 +1,6 @@
 state ("TheMessenger") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("Levels", true, "Levels");
     settings.Add("LevelsDLC1", true, "Levels (Picnic Panic)");
     settings.Add("Inventory", false, "Inventory");
@@ -355,13 +353,6 @@ startup {
     settings.Add("Seal_18361868372388", false, "Second");
     settings.Add("Seal_28602892356388", false, "Third");
 
-    vars.scanLevelManager = new SigScanTarget(0, "0F B6 00 85 C0 0F 85 ?? 00 00 00 48 8D 4D 30 48 83 EC 20");
-    vars.scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
-    vars.scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
-    vars.scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
-    vars.scanDLCManager = new SigScanTarget(0, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
-    vars.scanGameManager = new SigScanTarget(0, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
-
     vars.ResetVars = (Action)(() => {
         vars.oldSceneName = vars.curSceneName = "";
         vars.oldInventorySize = vars.curInventorySize = 0;
@@ -391,66 +382,106 @@ startup {
         vars.oldDLCSelectionDone = vars.curDLCSelectionDone = false;
     });
 
-    vars.UpdatePointers = (Action<Process>)((proc) => {
+    vars.CreateTextComponent = (Func<string, string, dynamic>)((name, value) => {
+        var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
+        dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
+        timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
+        textComponent.Settings.Text1 = name;
+        textComponent.Settings.Text2 = value;
+        return textComponent.Settings;
+    });
+
+    vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
+        return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
+    });
+
+    vars.CleanSceneName = (Func<string>)(() => {
+        return (vars.curSceneName.EndsWith("_Build")) ? vars.curSceneName.Substring(0, vars.curSceneName.Length-6) : vars.curSceneName;
+    });
+
+    vars.ResetVars();
+    
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.ResetVars();
+        vars.ClearSplitString(0x60);
+        vars.ClearSplitString(0x78);
+    });
+    timer.OnStart += vars.timerResetVars;
+
+    vars.textSettingLast = null;
+
+    vars.timerResetDisplay = (LiveSplit.Model.Input.EventHandlerT<TimerPhase>)((s, e) => {
+        if(vars.textSettingLast != null)
+            vars.textSettingLast.Text2 = "0.00";
+    });
+    timer.OnReset += vars.timerResetDisplay;
+
+    vars.quarbleUIOffset = 0x0;
+
+    vars.splitToRemove = new List<string>() {"SurfBoss", "Totem", "PunchOut", "SurfBossIntroCutscene", "TotemBossIntroCutscene", "RaceWinCutscene", "StartFinalPPBossCutscene"};
+}
+
+init {
+    vars.ReadPointer = (Func<IntPtr, IntPtr>)((basePtr) => {
+        IntPtr ptr = basePtr;
+        game.ReadPointer((IntPtr)(ptr), !((bool)vars.use32bit), out ptr);
+        return ptr;
+    });
+
+    vars.ReadPointers = (Func<IntPtr, int[], IntPtr>)((basePtr, offsets) => {
+        IntPtr ptr = basePtr;
+        foreach(int offset in offsets) {
+            game.ReadPointer((IntPtr)(ptr+offset), !((bool)vars.use32bit), out ptr);
+        }
+        return ptr;
+    });
+
+    vars.ReadString = (Func<IntPtr, int, string>)((baseOffset, count) => {
+        return game.ReadString((IntPtr)vars.ReadPointer((IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
+    });
+
+    vars.UpdatePointers = (Action)(() => {
         vars.oldSceneName = vars.curSceneName;
-        vars.curSceneName = proc.ReadString((IntPtr)vars.ReadPointers(proc, vars.levelManagerSig, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
+        vars.curSceneName = game.ReadString((IntPtr)vars.ReadPointers(vars.levelManagerSig, new int[] {vars.instructionsOffset[0], 0x0, 0x48})+0x14, 128);
         if(vars.curSceneName == null) vars.curSceneName = "";
 
-        vars.progressionManagerPtr = vars.ReadPointers(proc, vars.progressionManagerSig, new int[] {vars.instructionsOffset[1], 0x0});
+        vars.progressionManagerPtr = vars.ReadPointers(vars.progressionManagerSig, new int[] {vars.instructionsOffset[1], 0x0});
         vars.oldCheckpointIndex = vars.curCheckpointIndex;
-        vars.curCheckpointIndex = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x30)+0x38);
+        vars.curCheckpointIndex = game.ReadValue<int>((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+0x30)+0x38);
         vars.oldBossesDefeatedCount = vars.curBossesDefeatedCount;
-        vars.curBossesDefeatedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x60)+0x18);
-        vars.cutscenesPlayedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x78, 0x10});
+        vars.curBossesDefeatedCount = game.ReadValue<int>((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+0x60)+0x18);
+        vars.cutscenesPlayedAddr = vars.ReadPointers(vars.progressionManagerPtr, new int[] {0x78, 0x10});
         vars.oldCutscenesPlayedCount = vars.curCutscenesPlayedCount;
-        vars.curCutscenesPlayedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x78)+0x18);
+        vars.curCutscenesPlayedCount = game.ReadValue<int>((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+0x78)+0x18);
         vars.oldChallengeRoomsCompletedCount = vars.curChallengeRoomsCompletedCount;
-        vars.curChallengeRoomsCompletedCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+0x90)+0x18);
-        vars.challengeRoomsCompletedAddr = vars.ReadPointers(proc, vars.progressionManagerPtr, new int[] {0x90, 0x10});
+        vars.curChallengeRoomsCompletedCount = game.ReadValue<int>((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+0x90)+0x18);
+        vars.challengeRoomsCompletedAddr = vars.ReadPointers(vars.progressionManagerPtr, new int[] {0x90, 0x10});
         vars.oldUseWindmill = vars.curUseWindmill;
-        vars.curUseWindmill = proc.ReadValue<bool>((IntPtr)vars.progressionManagerPtr+0xEB);
+        vars.curUseWindmill = game.ReadValue<bool>((IntPtr)vars.progressionManagerPtr+0xEB);
         
-        IntPtr inventoryManagerPtr = vars.ReadPointers(proc, vars.inventoryManagerSig, new int[] {vars.instructionsOffset[2], 0x0, 0x78, 0x20});
-        vars.inventoryIdAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x20);
-        vars.inventoryNbAddr = vars.ReadPointer(proc, inventoryManagerPtr+0x28);
+        IntPtr inventoryManagerPtr = vars.ReadPointers(vars.inventoryManagerSig, new int[] {vars.instructionsOffset[2], 0x0, 0x78, 0x20});
+        vars.inventoryIdAddr = vars.ReadPointer(inventoryManagerPtr+0x20);
+        vars.inventoryNbAddr = vars.ReadPointer(inventoryManagerPtr+0x28);
         vars.oldInventorySize = vars.curInventorySize;
-        vars.curInventorySize = proc.ReadValue<int>(inventoryManagerPtr+0x30);
+        vars.curInventorySize = game.ReadValue<int>(inventoryManagerPtr+0x30);
         vars.oldInventoryCount = vars.curInventoryCount;
-        vars.curInventoryCount = proc.ReadValue<int>(inventoryManagerPtr+0x38);
+        vars.curInventoryCount = game.ReadValue<int>(inventoryManagerPtr+0x38);
 
         if(vars.quarbleUIOffset == 0x0) {
-            if(vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
-            if(vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x58, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x58;
+            if(vars.ReadPointers(vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x50, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x50;
+            if(vars.ReadPointers(vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, 0x58, 0x10, 0x20, 0x18}) != IntPtr.Zero) vars.quarbleUIOffset = 0x58;
         }
         if(vars.quarbleUIOffset != 0x0) {
-            var quarbleUI = vars.ReadPointers(proc, vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, vars.quarbleUIOffset, 0x10, 0x20});
-            vars.quarbleAnim = vars.ReadPointer(proc, quarbleUI+0x18);
-            vars.quarbleInDone = vars.ReadPointer(proc, quarbleUI+0x20);
+            var quarbleUI = vars.ReadPointers(vars.UIManagerSig, new int[] {vars.instructionsOffset[3], 0x0, 0x80, 0x28, vars.quarbleUIOffset, 0x10, 0x20});
+            vars.quarbleAnim = vars.ReadPointer(quarbleUI+0x18);
+            vars.quarbleInDone = vars.ReadPointer(quarbleUI+0x20);
         }
 
         vars.oldDLCSelectionDone = vars.curDLCSelectionDone;
-        vars.curDLCSelectionDone = proc.ReadValue<bool>((IntPtr)vars.ReadPointers(proc, vars.DLCManagerSig, new int[] {vars.instructionsOffset[4], 0x0})+0x34);
+        vars.curDLCSelectionDone = game.ReadValue<bool>((IntPtr)vars.ReadPointers(vars.DLCManagerSig, new int[] {vars.instructionsOffset[4], 0x0})+0x34);
     });
 
-    vars.ReadPointer = (Func<Process, IntPtr, IntPtr>)((proc, basePtr) => {
-        IntPtr ptr = basePtr;
-        proc.ReadPointer((IntPtr)(ptr), !((bool)vars.use32bit), out ptr);
-        return ptr;
-    });
-
-    vars.ReadPointers = (Func<Process, IntPtr, int[], IntPtr>)((proc, basePtr, offsets) => {
-        IntPtr ptr = basePtr;
-        foreach(int offset in offsets) {
-            proc.ReadPointer((IntPtr)(ptr+offset), !((bool)vars.use32bit), out ptr);
-        }
-        return ptr;
-    });
-
-    vars.ReadString = (Func<Process, IntPtr, int, string>)((proc, baseOffset, count) => {
-        return proc.ReadString((IntPtr)vars.ReadPointer(proc, (IntPtr)(baseOffset+0x20+0x8*(count-1)))+0x14, 128);
-    });
-
-    vars.UpdateRoomTimer = (Action<Process, bool>)((proc, inMenu) => {
+    vars.UpdateRoomTimer = (Action<bool>)((inMenu) => {
         if(vars.textSettingLast == null) {
             foreach (dynamic component in timer.Layout.Components) {
                 if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Last Room") {
@@ -463,14 +494,14 @@ startup {
         }
 
         if(!inMenu && timer.CurrentPhase == TimerPhase.Running) {
-            vars.gameManagerAddr.Update(proc);
+            vars.gameManagerAddr.Update(game);
             if(vars.gameManagerAddr.Current == IntPtr.Zero || vars.gameManagerAddr.Changed) {
-                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(proc.ReadPointer((IntPtr)(vars.gameManagerSig+vars.instructionsOffset[5])));
-                vars.gameManagerAddr.Update(proc);
+                vars.gameManagerAddr = new MemoryWatcher<IntPtr>(game.ReadPointer((IntPtr)(vars.gameManagerSig+vars.instructionsOffset[5])));
+                vars.gameManagerAddr.Update(game);
             }
 
             vars.oldRoomKey = vars.curRoomKey;
-            vars.curRoomKey = proc.ReadString((IntPtr)vars.ReadPointers(proc, (IntPtr)vars.gameManagerAddr.Current, new int[] {0x18, 0x98, 0x10})+0x14, 32);
+            vars.curRoomKey = game.ReadString((IntPtr)vars.ReadPointers((IntPtr)vars.gameManagerAddr.Current, new int[] {0x18, 0x98, 0x10})+0x14, 32);
             if(vars.oldRoomKey != vars.curRoomKey) {
                 if(vars.curRoomKey == null) {
                     vars.roomTimer.Stop(); //Stop during loading
@@ -492,32 +523,15 @@ startup {
         }
     });
 
-    vars.CreateTextComponent = (Func<string, string, dynamic>)((name, value) => {
-        var textComponentAssembly = Assembly.LoadFrom("Components\\LiveSplit.Text.dll");
-        dynamic textComponent = Activator.CreateInstance(textComponentAssembly.GetType("LiveSplit.UI.Components.TextComponent"), timer);
-        timer.Layout.LayoutComponents.Add(new LiveSplit.UI.Components.LayoutComponent("LiveSplit.Text.dll", textComponent as LiveSplit.UI.Components.IComponent));
-        textComponent.Settings.Text1 = name;
-        textComponent.Settings.Text2 = value;
-        return textComponent.Settings;
-    });
-
-    vars.FormatTimer = (Func<TimeSpan, string>)((timeSpan) => {
-        return timeSpan.ToString((timeSpan.Minutes > 9 ? "mm\\:ss\\.ff" : (timeSpan.Minutes > 0 ? "m\\:ss\\.ff" : (timeSpan.Seconds > 9 ? "ss\\.ff" : "s\\.ff"))), System.Globalization.CultureInfo.InvariantCulture);
-    });
-
-    vars.CleanSceneName = (Func<string>)(() => {
-        return (vars.curSceneName.EndsWith("_Build")) ? vars.curSceneName.Substring(0, vars.curSceneName.Length-6) : vars.curSceneName;
-    });
-
-    vars.ClearSplitString = (Action<Process, int>)((proc, listOffset) => {
-        IntPtr listPtr = vars.ReadPointer(proc, vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x10);
+    vars.ClearSplitString = (Action<int>)((listOffset) => {
+        IntPtr listPtr = vars.ReadPointer(vars.ReadPointer(vars.progressionManagerPtr+listOffset)+0x10);
         int listId = 0;
-        int listCount = proc.ReadValue<int>((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x18);
+        int listCount = game.ReadValue<int>((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+listOffset)+0x18);
         while(listId < listCount) {
-            IntPtr stringPtr = vars.ReadPointer(proc, listPtr+0x20+0x8*listId);
-            string stringValue = proc.ReadString(stringPtr+0x14, 64).ToString();
+            IntPtr stringPtr = vars.ReadPointer(listPtr+0x20+0x8*listId);
+            string stringValue = game.ReadString(stringPtr+0x14, 64).ToString();
             if(vars.splitToRemove.Contains(stringValue)) {
-                IntPtr lastStringPtr = (listId == listCount-1) ? IntPtr.Zero : vars.ReadPointer(proc, listPtr+0x20+0x8*(listCount-1));
+                IntPtr lastStringPtr = (listId == listCount-1) ? IntPtr.Zero : vars.ReadPointer(listPtr+0x20+0x8*(listCount-1));
 
                 int size = System.Runtime.InteropServices.Marshal.SizeOf(lastStringPtr);
                 byte[] arr = new byte[size];
@@ -527,16 +541,18 @@ startup {
                 System.Runtime.InteropServices.Marshal.Copy(ptr, arr, 0, size);
                 System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
                 
-                proc.WriteBytes(listPtr+0x20+0x8*listId, arr);
-                proc.WriteBytes((IntPtr)vars.ReadPointer(proc, vars.progressionManagerPtr+listOffset)+0x18, BitConverter.GetBytes(--listCount));
+                game.WriteBytes(listPtr+0x20+0x8*listId, arr);
+                game.WriteBytes((IntPtr)vars.ReadPointer(vars.progressionManagerPtr+listOffset)+0x18, BitConverter.GetBytes(--listCount));
             } else
                 ++listId;
         }
     });
-}
 
-init {
-    bool instructionsFound = false;
+    // Obsolete. Needs to refind the offsets of some 32bit versions
+    // vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
+    vars.use32bit = false;
+    vars.instructionsOffset = vars.use32bit ? new int[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x11, 0x6};
+
     vars.levelManagerSig = IntPtr.Zero;
     vars.progressionManagerSig = IntPtr.Zero;
     vars.inventoryManagerSig = IntPtr.Zero;
@@ -544,71 +560,61 @@ init {
     vars.UIManagerSig = IntPtr.Zero;
     vars.DLCManagerSig = IntPtr.Zero;
 
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+    vars.threadScan = new Thread(() => {
+        var sigsFound = false;
 
-        if(vars.levelManagerSig == IntPtr.Zero && ((vars.levelManagerSig = scanner.Scan(vars.scanLevelManager)) != IntPtr.Zero))
-            print("[Autosplitter] LevelManager Found : " + vars.levelManagerSig.ToString("X"));
+        var scanLevelManager = new SigScanTarget(0, "0F B6 00 85 C0 0F 85 ?? 00 00 00 48 8D 4D 30 48 83 EC 20");
+        var scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
+        var scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
+        var scanUIManager = new SigScanTarget(0, "48 8B 56 18 F3 0F 10 05 ?? ?? ?? ?? F3 0F 5A C0 66 0F 57 C9");
+        var scanDLCManager = new SigScanTarget(0, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
+        var scanGameManager = new SigScanTarget(0, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
-        if(vars.progressionManagerSig == IntPtr.Zero && ((vars.progressionManagerSig = scanner.Scan(vars.scanProgressionManager)) != IntPtr.Zero))
-            print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerSig.ToString("X"));
+        while(!sigsFound) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(vars.inventoryManagerSig == IntPtr.Zero && ((vars.inventoryManagerSig = scanner.Scan(vars.scanInventoryManager)) != IntPtr.Zero))
-            print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerSig.ToString("X"));
+                if(vars.levelManagerSig == IntPtr.Zero && ((vars.levelManagerSig = scanner.Scan(scanLevelManager)) != IntPtr.Zero))
+                    print("[Autosplitter] LevelManager Found : " + vars.levelManagerSig.ToString("X"));
 
-        if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(vars.scanUIManager)) != IntPtr.Zero))
-            print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
+                if(vars.progressionManagerSig == IntPtr.Zero && ((vars.progressionManagerSig = scanner.Scan(scanProgressionManager)) != IntPtr.Zero))
+                    print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerSig.ToString("X"));
 
-        if(vars.DLCManagerSig == IntPtr.Zero && ((vars.DLCManagerSig = scanner.Scan(vars.scanDLCManager)) != IntPtr.Zero))
-            print("[Autosplitter] DLCManager Found : " + vars.DLCManagerSig.ToString("X"));
+                if(vars.inventoryManagerSig == IntPtr.Zero && ((vars.inventoryManagerSig = scanner.Scan(scanInventoryManager)) != IntPtr.Zero))
+                    print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerSig.ToString("X"));
 
-        if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(vars.scanGameManager)) != IntPtr.Zero))
-            print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
+                if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(scanUIManager)) != IntPtr.Zero))
+                    print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
 
-        instructionsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && vars.DLCManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
-        if(instructionsFound)
-            break;
-    }
+                if(vars.DLCManagerSig == IntPtr.Zero && ((vars.DLCManagerSig = scanner.Scan(scanDLCManager)) != IntPtr.Zero))
+                    print("[Autosplitter] DLCManager Found : " + vars.DLCManagerSig.ToString("X"));
 
-    if (!instructionsFound)
-        throw new Exception("[Autosplitter] Can't find signature");
+                if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(scanGameManager)) != IntPtr.Zero))
+                    print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
 
-    vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.ResetVars();
-        vars.ClearSplitString(game, 0x60);
-        vars.ClearSplitString(game, 0x78);
+                sigsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && vars.DLCManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
+                if(sigsFound)
+                    break;
+            }
+            if(!sigsFound) {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
     });
-    timer.OnStart += vars.timerResetVars;
-
-    vars.timerResetDisplay = (LiveSplit.Model.Input.EventHandlerT<TimerPhase>)((s, e) => {
-        if(vars.textSettingLast != null)
-            vars.textSettingLast.Text2 = "0.00";
-    });
-    timer.OnReset += vars.timerResetDisplay;
-
-    // Obsolete. Needs to refind the offsets of some 32bit versions
-    // vars.use32bit = game.ReadValue<byte>((IntPtr)vars.levelManagerSig+0x7) == 0x53;
-    vars.use32bit = false;
-    vars.instructionsOffset = vars.use32bit ? new int[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0} : new int[] {0x136, 0x6E, 0xE, -0xAC, 0x11, 0x6};
-    
-    vars.textSettingLast = null;
-
-    vars.quarbleUIOffset = 0x0;
-
-    vars.splitToRemove = new List<string>() {"SurfBoss", "Totem", "PunchOut", "SurfBossIntroCutscene", "TotemBossIntroCutscene", "RaceWinCutscene", "StartFinalPPBossCutscene"};
-
-    vars.ResetVars();
-
-    refreshRate = 200/3d;
+    vars.threadScan.Start();
 }
 
 update {
-    vars.UpdatePointers(game);
+    if(vars.levelManagerSig == IntPtr.Zero)
+        return false;
+
+    vars.UpdatePointers();
 
     bool inMenu = vars.curSceneName.Length < 8 || vars.oldSceneName.Length < 8;
 
-    if(settings["RoomTimer"]) vars.UpdateRoomTimer(game, inMenu);
+    if(settings["RoomTimer"]) vars.UpdateRoomTimer(inMenu);
 
     if(inMenu) return timer.CurrentPhase == TimerPhase.NotRunning;
 
@@ -671,13 +677,13 @@ split {
     }
 
     if(vars.oldChallengeRoomsCompletedCount != vars.curChallengeRoomsCompletedCount)
-        return settings["Seal_"+vars.ReadString(game, vars.challengeRoomsCompletedAddr, vars.curChallengeRoomsCompletedCount)];
+        return settings["Seal_"+vars.ReadString(vars.challengeRoomsCompletedAddr, vars.curChallengeRoomsCompletedCount)];
 
     if(vars.oldCheckpointIndex != vars.curCheckpointIndex && vars.curCheckpointIndex > -1 && vars.savedCheckpoints.Add(vars.curSceneName+"_"+vars.curCheckpointIndex))
         return settings["Checkpoint_"+vars.CleanSceneName().Substring(6)+"_"+vars.curCheckpointIndex];
 
     if(vars.oldCutscenesPlayedCount != vars.curCutscenesPlayedCount) {
-        string cutsceneSplit = "Cutscene_"+vars.ReadString(game, vars.cutscenesPlayedAddr, vars.curCutscenesPlayedCount);
+        string cutsceneSplit = "Cutscene_"+vars.ReadString(vars.cutscenesPlayedAddr, vars.curCutscenesPlayedCount);
         return settings.ContainsKey(cutsceneSplit) && settings[cutsceneSplit];
     }
 
@@ -692,6 +698,7 @@ isLoading {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.timerResetVars;
     timer.OnReset -= vars.timerResetDisplay;
 }

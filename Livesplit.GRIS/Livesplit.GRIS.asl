@@ -1,8 +1,6 @@
-state("GRIS") {} //Need to replace custom ReadPointers to 64 bits DeepPointers when they will be supported
+state("GRIS") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("end", true, "End");
     settings.Add("colors", false, "Colors");
     settings.Add("powers", false, "Powers");
@@ -106,13 +104,13 @@ startup {
     settings.Add("ach11", false, "Eel");
     settings.Add("ach13", false, "Magic fowls");    
 
-    vars.ReadPointers = (Func<Process, IntPtr, int[], IntPtr>)((proc, basePtr, offsets) => {
-        IntPtr ptr = basePtr;
-        foreach(int offset in offsets) {
-            proc.ReadPointer((IntPtr)(ptr+offset), out ptr);
-        }
-        return ptr;
-    });
+    vars.ptr = IntPtr.Zero;
+    vars.scenes = new HashSet<string>();
+    vars.curSceneVer = vars.oldSceneVer = 0;
+
+    vars.oldFadeColor = vars.curFadeColor = 0;
+    vars.curIsStarted = vars.oldIsStarted = 0;
+    vars.curStartDuration = vars.oldStartDuration = 0;
 
     vars.InitVars = (Action)(() => {
         vars.oldColor = vars.curColor = 0;
@@ -127,26 +125,13 @@ startup {
 }
 
 init {
-    print("[Autosplitter] Scanning memory");
-
-    vars.ptr = IntPtr.Zero;
-    var target = new SigScanTarget(14, "55 48 8B EC 56 48 83 EC 28 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 08");
-
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        if((vars.ptr = scanner.Scan(target)) != IntPtr.Zero)
-            break;
-    }
-
-    if (vars.ptr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    vars.scenes = new HashSet<string>();
-    vars.curSceneVer = vars.oldSceneVer = 0;
-
-    vars.oldFadeColor = vars.curFadeColor = 0;
-    vars.curIsStarted = vars.oldIsStarted = 0;
-    vars.curStartDuration = vars.oldStartDuration = 0;
+    vars.ReadPointers = (Func<IntPtr, int[], IntPtr>)(( basePtr, offsets) => {
+        IntPtr ptr = basePtr;
+        foreach(int offset in offsets) {
+            game.ReadPointer((IntPtr)(ptr+offset), out ptr);
+        }
+        return ptr;
+    });
 
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.InitVars();
@@ -154,17 +139,39 @@ init {
         for(byte i = 0; i < 17; i++) if(settings["ach"+i]) vars.achievementList.Add(i);
     });
     timer.OnStart += vars.timerResetVars;
+    
+    vars.threadScan = new Thread(() => {
+        var target = new SigScanTarget(14, "55 48 8B EC 56 48 83 EC 28 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 08");
 
-    refreshRate = 200/3d;
+        while(vars.ptr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+
+                if((vars.ptr = scanner.Scan(target)) != IntPtr.Zero) {
+                    print("[Autosplitter] Target Found : " + vars.ptr.ToString("X"));
+                    break;
+                }
+            }
+            if(vars.ptr == IntPtr.Zero) {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
-    IntPtr mainManager = vars.ReadPointers(game, vars.ptr, new int[] {0x0, 0x0});
+    if(vars.ptr == IntPtr.Zero)
+        return false;
+
+    IntPtr mainManager = vars.ReadPointers(vars.ptr, new int[] {0x0, 0x0});
 
     if(timer.CurrentPhase == TimerPhase.NotRunning) {
         //Scenes
         vars.oldSceneVer = vars.curSceneVer;
-        IntPtr worldManager = vars.ReadPointers(game, mainManager, new int[] {0x90, 0x28});
+        IntPtr worldManager = vars.ReadPointers(mainManager, new int[] {0x90, 0x28});
         vars.curSceneVer = game.ReadValue<int>(worldManager+0x1C);
         if(vars.oldSceneVer != vars.curSceneVer) {
             int scenesSize = game.ReadValue<int>(worldManager+0x18);
@@ -175,7 +182,7 @@ update {
         }
 
         //GuiCamera
-        IntPtr menuTimer = vars.ReadPointers(game, mainManager, new int[] {0xF8, 0x68, 0x10});
+        IntPtr menuTimer = vars.ReadPointers(mainManager, new int[] {0xF8, 0x68, 0x10});
         vars.oldIsStarted = vars.curIsStarted;
         vars.curIsStarted = game.ReadValue<byte>(menuTimer+0x14);
         vars.oldStartDuration = vars.curStartDuration;
@@ -183,10 +190,10 @@ update {
     } else {
         //FX
         vars.oldFadeColor = vars.curFadeColor;
-        vars.curFadeColor = game.ReadValue<int>((IntPtr)vars.ReadPointers(game, mainManager, new int[] {0xC8, 0x38})+0x2C);
+        vars.curFadeColor = game.ReadValue<int>((IntPtr)vars.ReadPointers(mainManager, new int[] {0xC8, 0x38})+0x2C);
 
         //Power
-        vars.nextPower = game.ReadValue<byte>((IntPtr)(vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x20, 0x28})+0x20+0x1*vars.curPower));
+        vars.nextPower = game.ReadValue<byte>((IntPtr)(vars.ReadPointers(mainManager, new int[] {0xD0, 0x20, 0x28})+0x20+0x1*vars.curPower));
         if(vars.initPower == 1) {
             vars.oldPower = vars.curPower;
             if(vars.nextPower == 1) {
@@ -197,7 +204,7 @@ update {
         }
 
         //Color
-        vars.nextColor = game.ReadValue<byte>((IntPtr)(vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x28, 0x28})+0x20+0x1*vars.curColor));
+        vars.nextColor = game.ReadValue<byte>((IntPtr)(vars.ReadPointers(mainManager, new int[] {0xD0, 0x28, 0x28})+0x20+0x1*vars.curColor));
         vars.oldColor = vars.curColor;
         if(vars.nextColor == 1) {
             if(vars.curColor == 0 || vars.curColor == 1) vars.curColor += 2;
@@ -212,7 +219,7 @@ update {
         //Memento
         if(vars.curPower > 0) {
             vars.oldMemento = vars.curMemento;
-            var collectibles = vars.ReadPointers(game, mainManager, new int[] {0xD0, 0x30});
+            var collectibles = vars.ReadPointers(mainManager, new int[] {0xD0, 0x30});
             foreach(byte offset in vars.mementoList) {
                 if(game.ReadValue<byte>(game.ReadPointer((IntPtr)collectibles+0x20+0x8*offset)+0x14) == 1) {
                     vars.curMemento = offset;
@@ -223,7 +230,7 @@ update {
         }
 
         vars.oldAchievement = vars.curAchievement;
-        var achievements = vars.ReadPointers(game, mainManager, new int[] {0x118, 0x18, 0x10});
+        var achievements = vars.ReadPointers(mainManager, new int[] {0x118, 0x18, 0x10});
         foreach(byte offset in vars.achievementList) {
             if(game.ReadValue<byte>(game.ReadPointer((IntPtr)achievements+0x20+0x8*offset)+0x50) == 1) {
                 vars.curAchievement = offset;
@@ -259,5 +266,6 @@ split {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.timerResetVars;
 }

@@ -1,8 +1,6 @@
 state("IceAge") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("path1", true, "Path 1");
     settings.Add("path2", true, "Path 2");
     settings.Add("path3", true, "Path 3");
@@ -39,58 +37,65 @@ startup {
     settings.Add("sec5_3", false, "Complete \"The Fiery Peak\"");
     settings.Add("sec5_4", true, "Complete \"The Magma Ruins\"");
 
-    vars.gameTarget = new SigScanTarget(0x27, "55 8B EC 83 EC 28 C7 44 24 08 06 00 00 00");
-    vars.appletTarget = new SigScanTarget(0x8, "55 8B EC 83 EC 08 8B 05 ?? ?? ?? ?? 39 00 C7");
+    vars.splits = new HashSet<int>();
+
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.splits = new HashSet<int>();
+    });
+    timer.OnStart += vars.timerResetVars;
 }
 
 init {
-    IntPtr gamePtr = IntPtr.Zero;
-    IntPtr appletPtr = IntPtr.Zero;
-
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-
-        if(gamePtr == IntPtr.Zero && (gamePtr = scanner.Scan(vars.gameTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Game Found : " + gamePtr.ToString("X"));
-
-        if(appletPtr == IntPtr.Zero && (appletPtr = scanner.Scan(vars.appletTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Applet Found : " + appletPtr.ToString("X"));
-
-        if(gamePtr != IntPtr.Zero && appletPtr != IntPtr.Zero)
-            break;
-    }
-
-    if(gamePtr == IntPtr.Zero || appletPtr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    gamePtr = game.ReadPointer((IntPtr)gamePtr)-0x14;
-
-    vars.visitedLevels = new MemoryWatcher<int>(new DeepPointer(gamePtr+0x88));
-    vars.sectionsCompleted = new MemoryWatcher<int>(new DeepPointer(gamePtr+0x14));
-
-    vars.watchers = new MemoryWatcherList() {
-        (vars.level = new MemoryWatcher<int>(new DeepPointer(appletPtr, 0x0, 0x80))),
-        (vars.section = new MemoryWatcher<int>(new DeepPointer(appletPtr, 0x0, 0x84))),
-        (vars.loading = new MemoryWatcher<bool>(new DeepPointer(appletPtr, 0x0, 0x88)))
-    };
-
     vars.IsCurrentSectionCompleted = (Func<bool>)(() => {
         vars.sectionsCompleted.Update(game);
         return game.ReadValue<bool>((IntPtr)(vars.sectionsCompleted.Current+0x10+vars.level.Current*0x6+vars.section.Current));
     });
 
-    vars.ResetVars = (EventHandler)((s, e) => {
-        vars.splits = new HashSet<int>();
+    vars.threadScan = new Thread(() => {
+        var gameTarget = new SigScanTarget(0x27, "55 8B EC 83 EC 28 C7 44 24 08 06 00 00 00");
+        var appletTarget = new SigScanTarget(0x8, "55 8B EC 83 EC 08 8B 05 ?? ?? ?? ?? 39 00 C7");
+        
+        IntPtr gamePtr = IntPtr.Zero;
+        IntPtr appletPtr = IntPtr.Zero;
+        
+        while(gamePtr == IntPtr.Zero || appletPtr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+
+                if(gamePtr == IntPtr.Zero && (gamePtr = scanner.Scan(gameTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Game Found : " + gamePtr.ToString("X"));
+
+                if(appletPtr == IntPtr.Zero && (appletPtr = scanner.Scan(appletTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Applet Found : " + appletPtr.ToString("X"));
+
+                if(gamePtr != IntPtr.Zero && appletPtr != IntPtr.Zero)
+                    break;
+            }
+            if(gamePtr != IntPtr.Zero && appletPtr != IntPtr.Zero) {
+                gamePtr = game.ReadPointer((IntPtr)gamePtr)-0x14;
+
+                vars.visitedLevels = new MemoryWatcher<int>(new DeepPointer(gamePtr+0x88));
+                vars.sectionsCompleted = new MemoryWatcher<int>(new DeepPointer(gamePtr+0x14));
+
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.level = new MemoryWatcher<int>(new DeepPointer(appletPtr, 0x0, 0x80))),
+                    (vars.section = new MemoryWatcher<int>(new DeepPointer(appletPtr, 0x0, 0x84))),
+                    (vars.loading = new MemoryWatcher<bool>(new DeepPointer(appletPtr, 0x0, 0x88)))
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
     });
-    timer.OnStart += vars.ResetVars;
-
-    vars.splits = new HashSet<int>();
-
-    refreshRate = 200/3d;
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
 }
 
@@ -120,7 +125,7 @@ isLoading {
     return vars.loading.Current;
 }
 
-
 shutdown {
-    timer.OnStart -= vars.ResetVars;
+    vars.threadScan.Abort();
+    timer.OnStart -= vars.timerResetVars;
 }

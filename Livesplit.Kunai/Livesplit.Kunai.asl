@@ -1,8 +1,6 @@
 state("Kunai") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("weapons", false, "Weapons");
     settings.Add("bosses", true, "Bosses");
     settings.Add("events", false, "Events");
@@ -142,64 +140,71 @@ startup {
         vars.InitVars();
     });
     timer.OnStart += vars.ResetVars;
-
-    vars.scanLoadingScreen = new SigScanTarget(0x8, "55 8B EC 83 EC 28 8B 05 ?? ?? ?? ?? 89 04 24");
-    vars.scanGameState = new SigScanTarget(0x24, "55 8B EC 83 EC 28 C7 04 24 ?? ?? ?? ?? 8B C0 E8 ?? ?? ?? ?? 89 45 FC 89 04 24 90 E8 ?? ?? ?? ?? 8B 4D FC B8 ?? ?? ?? ?? 89 08 C9 C3");
-    vars.scanPlayerSystem = new SigScanTarget(0x1, "BA ?? ?? ?? ?? 8B C0 E8 ???????? 8B 40 0C 89 45 CC");
 }
 
 init {
-    IntPtr ptrLoadingScreen = IntPtr.Zero;
-    IntPtr ptrGameState = IntPtr.Zero;
-    IntPtr ptrPlayerSystem = IntPtr.Zero;
+    vars.threadScan = new Thread(() => {
+        var scanLoadingScreen = new SigScanTarget(0x8, "55 8B EC 83 EC 28 8B 05 ?? ?? ?? ?? 89 04 24");
+        var scanGameState = new SigScanTarget(0x24, "55 8B EC 83 EC 28 C7 04 24 ?? ?? ?? ?? 8B C0 E8 ?? ?? ?? ?? 89 45 FC 89 04 24 90 E8 ?? ?? ?? ?? 8B 4D FC B8 ?? ?? ?? ?? 89 08 C9 C3");
+        var scanPlayerSystem = new SigScanTarget(0x1, "BA ?? ?? ?? ?? 8B C0 E8 ???????? 8B 40 0C 89 45 CC");
 
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+        IntPtr ptrLoadingScreen = IntPtr.Zero;
+        IntPtr ptrGameState = IntPtr.Zero;
+        IntPtr ptrPlayerSystem = IntPtr.Zero;
+    
+        while(ptrLoadingScreen == IntPtr.Zero || ptrGameState == IntPtr.Zero || ptrPlayerSystem == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(ptrLoadingScreen == IntPtr.Zero && (ptrLoadingScreen = scanner.Scan(vars.scanLoadingScreen)) != IntPtr.Zero)
-            print("[Autosplitter] LoadingScreen Found : " + ptrLoadingScreen.ToString("X"));
+                if(ptrLoadingScreen == IntPtr.Zero && (ptrLoadingScreen = scanner.Scan(scanLoadingScreen)) != IntPtr.Zero)
+                    print("[Autosplitter] LoadingScreen Found : " + ptrLoadingScreen.ToString("X"));
 
-        if(ptrGameState == IntPtr.Zero) {
-            foreach (IntPtr ptr in scanner.ScanAll(vars.scanGameState)) {
-                if(game.ReadValue<float>(game.ReadPointer(game.ReadPointer(ptr))+0x4C) != 25.42f)
-                    continue;
+                if(ptrGameState == IntPtr.Zero) {
+                    foreach (IntPtr ptr in scanner.ScanAll(scanGameState)) {
+                        if(game.ReadValue<float>(game.ReadPointer(game.ReadPointer(ptr))+0x4C) != 25.42f)
+                            continue;
 
-                ptrGameState = ptr;
-                print("[Autosplitter] GameState Found : " + ptrGameState.ToString("X"));
-                break;
+                        ptrGameState = ptr;
+                        print("[Autosplitter] GameState Found : " + ptrGameState.ToString("X"));
+                        break;
+                    }
+                }
+
+                if(ptrPlayerSystem == IntPtr.Zero && (ptrPlayerSystem = scanner.Scan(scanPlayerSystem)) != IntPtr.Zero)
+                    print("[Autosplitter] PlayerSystem Found : " + ptrPlayerSystem.ToString("X"));
+
+                if(ptrLoadingScreen != IntPtr.Zero && ptrGameState != IntPtr.Zero && ptrPlayerSystem != IntPtr.Zero)
+                    break;
+            }
+            if (ptrLoadingScreen != IntPtr.Zero && ptrGameState != IntPtr.Zero && ptrPlayerSystem != IntPtr.Zero) {
+                vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44));
+
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.isLoading = new MemoryWatcher<bool>(new DeepPointer(ptrLoadingScreen, 0x0, 0x20))),
+
+                    (vars.sceneStates = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x34))),
+                    (vars.weapons = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x50))),
+                    (vars.upgrades = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x54))),
+                    (vars.unlockedHats = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x60))),
+                    (vars.worldEvents = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x68))),
+                    
+                    (vars.scytheUpgrade = new MemoryWatcher<bool>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0x48, 0x1C, 0x8C))),
+                    (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC)))
+                };
+            } else {
+                Thread.Sleep(2000);
             }
         }
-
-        if(ptrPlayerSystem == IntPtr.Zero && (ptrPlayerSystem = scanner.Scan(vars.scanPlayerSystem)) != IntPtr.Zero)
-            print("[Autosplitter] PlayerSystem Found : " + ptrPlayerSystem.ToString("X"));
-
-        if(ptrLoadingScreen != IntPtr.Zero && ptrGameState != IntPtr.Zero && ptrPlayerSystem != IntPtr.Zero)
-            break;
-    }
-
-    if(ptrLoadingScreen == IntPtr.Zero || ptrGameState == IntPtr.Zero || ptrPlayerSystem == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-    
-    vars.playtime = new MemoryWatcher<float>(new DeepPointer(ptrGameState, 0x0, 0x44));
-
-    vars.watchers = new MemoryWatcherList() {
-        (vars.isLoading = new MemoryWatcher<bool>(new DeepPointer(ptrLoadingScreen, 0x0, 0x20))),
-
-        (vars.sceneStates = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x34))),
-        (vars.weapons = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x50))),
-        (vars.upgrades = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x54))),
-        (vars.unlockedHats = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x60))),
-        (vars.worldEvents = new MemoryWatcher<int>(new DeepPointer(ptrGameState, 0x0, 0x68))),
-        
-        (vars.scytheUpgrade = new MemoryWatcher<bool>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0x48, 0x1C, 0x8C))),
-        (vars.controlsDisableStack = new MemoryWatcher<int>(new DeepPointer(ptrPlayerSystem, 0x24, 0x4, 0x0, 0xC, 0x10, 0xCC)))
-    };
-
-    refreshRate = 200/3d;
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
 
     vars.oldSceneStatesCount = vars.curSceneStatesCount;
@@ -267,5 +272,6 @@ isLoading {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.ResetVars;
 }

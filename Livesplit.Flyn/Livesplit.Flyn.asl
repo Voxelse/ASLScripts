@@ -1,8 +1,6 @@
 state("Flyn") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("w1", true, "1 - Tricoton");
     settings.Add("w2", true, "2 - Tripatio");
     settings.Add("w3", true, "3 - Trilab");
@@ -40,35 +38,42 @@ startup {
     settings.Add("l61", true, "Germion");
     settings.CurrentDefaultParent = "secrets5";
     settings.Add("l62", true, "Buccoly");
-
-    vars.scanTargetGame = new SigScanTarget(2, "8D 15 ?? ?? ?? ?? E8 ?? ?? ?? ?? 89 75 E0 A1");
 }
 
 init {
-    print("[Autosplitter] Scanning memory");
+    vars.threadScan = new Thread(() => {
+        var scanTargetGame = new SigScanTarget(2, "8D 15 ?? ?? ?? ?? E8 ?? ?? ?? ?? 89 75 E0 A1");
+        IntPtr targetPtr = IntPtr.Zero;
+        while(targetPtr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-    IntPtr ptr = IntPtr.Zero;
+                if((targetPtr = scanner.Scan(scanTargetGame)) != IntPtr.Zero) {
+                    print("[Autosplitter] Target Found : " + targetPtr.ToString("X"));
+                    break;
+                }
+            }
+            if (targetPtr != IntPtr.Zero) {
+                int relPtr = (int)((long)targetPtr - (long)modules.First().BaseAddress);
 
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        if((ptr = scanner.Scan(vars.scanTargetGame)) != IntPtr.Zero)
-            break;
-    }
-
-    if (ptr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    int relPtr = (int)((long)ptr - (long)modules.First().BaseAddress);
-
-    vars.watchers = new MemoryWatcherList() {
-        (vars.levelId = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xEC))),
-        (vars.gameState = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xC8, 0x1C)))
-    };
-
-    refreshRate = 200/3d;
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.levelId = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xEC))),
+                    (vars.gameState = new MemoryWatcher<int>(new DeepPointer(relPtr, 0x0, 0xC8, 0x1C)))
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();    
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
 }
 
@@ -90,4 +95,8 @@ reset {
 
 isLoading {
     return vars.gameState.Current == 2;
+}
+
+shutdown {
+    vars.threadScan.Abort();
 }

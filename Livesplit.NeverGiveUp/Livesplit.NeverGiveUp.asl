@@ -1,8 +1,6 @@
 state("NeverGiveUp") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("area", false, "Split at each Area");
     settings.Add("level", true, "Split at each Level");
     settings.Add("set", false, "Split at each Set");
@@ -66,7 +64,7 @@ startup {
     settings.Add("l6_Boss", true, "Boss");
     settings.Add("l6_5", true, "FATAL_ERROR");
 
-    vars.setCount = new byte[][] {
+    var setCount = new byte[][] {
         new byte[] {7, 6, 5, 6, 4},
         new byte[] {6, 6, 5, 5, 4},
         new byte[] {7, 5, 5, 6, 4},
@@ -75,8 +73,8 @@ startup {
         new byte[] {5, 5, 5, 5, 5}
     };
 
-    for(byte areaId = 0; areaId < vars.setCount.Length; areaId++) {
-        byte[] area = vars.setCount[areaId];
+    for(byte areaId = 0; areaId < setCount.Length; areaId++) {
+        byte[] area = setCount[areaId];
         for(byte levelSetId = 0; levelSetId < area.Length; levelSetId++) {
             string levelSetting = (areaId+1)+"_"+(levelSetId+1);
             byte levelSet = area[levelSetId];
@@ -84,49 +82,54 @@ startup {
                 settings.Add("s"+levelSetting+"_"+setId, true, "Set "+(setId+1), "l"+levelSetting);
         }       
     }
-
-    vars.saveDataTarget = new SigScanTarget(9, "48 81 EC 80 00 00 00 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 FF FF FF FF");
-    vars.gameTarget = new SigScanTarget(6, "48 83 EC 30 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 01 00 00 00");
-    vars.levelsTarget = new SigScanTarget(6, "48 83 EC 08 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 05 00 00 00");
 }
 
 init {
-    bool instructionsFound = false;
-    vars.saveData = IntPtr.Zero;
-    vars.game = IntPtr.Zero;
-    vars.levels = IntPtr.Zero;
+    vars.threadScan = new Thread(() => {
+        var saveDataTarget = new SigScanTarget(9, "48 81 EC 80 00 00 00 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 FF FF FF FF");
+        var gameTarget = new SigScanTarget(6, "48 83 EC 30 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 01 00 00 00");
+        var levelsTarget = new SigScanTarget(6, "48 83 EC 08 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? C7 00 05 00 00 00");
 
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+        vars.saveData = IntPtr.Zero;
+        vars.game = IntPtr.Zero;
+        vars.levels = IntPtr.Zero;
+    
+        while(vars.saveData == IntPtr.Zero || vars.game == IntPtr.Zero || vars.levels == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(vars.saveData == IntPtr.Zero && (vars.saveData = scanner.Scan(vars.saveDataTarget)) != IntPtr.Zero)
-            print("[Autosplitter] SaveData Found : " + vars.saveData.ToString("X"));
+                if(vars.saveData == IntPtr.Zero && (vars.saveData = scanner.Scan(saveDataTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] SaveData Found : " + vars.saveData.ToString("X"));
 
-        if(vars.game == IntPtr.Zero && (vars.game = scanner.Scan(vars.gameTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Game Found : " + vars.game.ToString("X"));
+                if(vars.game == IntPtr.Zero && (vars.game = scanner.Scan(gameTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Game Found : " + vars.game.ToString("X"));
 
-        if(vars.levels == IntPtr.Zero && (vars.levels = scanner.Scan(vars.levelsTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Levels Found : " + vars.levels.ToString("X"));
+                if(vars.levels == IntPtr.Zero && (vars.levels = scanner.Scan(levelsTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Levels Found : " + vars.levels.ToString("X"));
 
-        instructionsFound = vars.saveData != IntPtr.Zero && vars.game != IntPtr.Zero && vars.levels != IntPtr.Zero;
-        if(instructionsFound)
-            break;
-    }
+                if(vars.saveData != IntPtr.Zero && vars.game != IntPtr.Zero && vars.levels != IntPtr.Zero)
+                    break;
+            }
+            if (vars.saveData != IntPtr.Zero && vars.game != IntPtr.Zero && vars.levels != IntPtr.Zero) {
+                vars.saveData = game.ReadPointer((IntPtr)vars.saveData);
+                vars.game = game.ReadPointer((IntPtr)vars.game)-0x4;
+                vars.levels = game.ReadPointer((IntPtr)vars.levels);
 
-    if (!instructionsFound)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    vars.saveData = game.ReadPointer((IntPtr)vars.saveData);
-    vars.game = game.ReadPointer((IntPtr)vars.game)-0x4;
-    vars.levels = game.ReadPointer((IntPtr)vars.levels);
-
-    vars.curGameTime = vars.curExitTimer = 0;
-
-    refreshRate = 200/3d;
+                vars.curGameTime = vars.curExitTimer = 0;
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(vars.game == IntPtr.Zero)
+        return false;
+
     vars.oldGameTime = vars.curGameTime;
     if(settings["ilMode"])
         vars.curGameTime = game.ReadValue<int>((IntPtr)vars.game+0x38);
@@ -165,4 +168,8 @@ isLoading {
 
 gameTime {
     return TimeSpan.FromMilliseconds(vars.curGameTime);
+}
+
+shutdown {
+    vars.threadScan.Abort();
 }

@@ -1,10 +1,8 @@
 state("Bloodroots") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("act", false, "Split at each Act (3 splits)");
-    settings.Add("level", true, "Split at each Level (24 splits)");
+    settings.Add("level", true, "Split at each Level (25 splits)");
     settings.Add("room", false, "Split at each Room (129 splits)");
     settings.Add("custom", false, "Custom Splits");
     settings.Add("ILstart", false, "Auto-Start for Individual Levels");
@@ -68,52 +66,59 @@ startup {
         }
     }
 
-    vars.levelManagerTarget = new SigScanTarget(0x5, "41 FF D3 49 BA ?? ?? ?? ?? ?? ?? ?? ?? 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 85 C0 74 24");
-    vars.menuManagerTarget = new SigScanTarget(0x2, "48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 89 30 48 8B CE 66 66 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 66 66 90");
-}
-
-init {
-    IntPtr levelManagerPtr = IntPtr.Zero;
-    IntPtr menuManagerPtr = IntPtr.Zero;
-
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-
-        if(levelManagerPtr == IntPtr.Zero && (levelManagerPtr = scanner.Scan(vars.levelManagerTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Level Manager Found : " + levelManagerPtr.ToString("X"));
-
-        if(menuManagerPtr == IntPtr.Zero && (menuManagerPtr = scanner.Scan(vars.menuManagerTarget)) != IntPtr.Zero)
-            print("[Autosplitter] Menu Manager Found : " + menuManagerPtr.ToString("X"));
-
-        if(levelManagerPtr != IntPtr.Zero && menuManagerPtr != IntPtr.Zero)
-            break;
-    }
-
-    if(levelManagerPtr == IntPtr.Zero || menuManagerPtr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    vars.levelManager = new MemoryWatcher<IntPtr>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0));
-    vars.isPanelForced = new MemoryWatcher<bool>(new DeepPointer(menuManagerPtr, 0x0, 0x20, 0xD4));
-
-    vars.watchers = new MemoryWatcherList() {
-        (vars.levelName = new StringWatcher(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0x20, 0x14), 32)),
-        (vars.roomId = new MemoryWatcher<int>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0x80))),
-        (vars.time = new MemoryWatcher<float>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xAC))),
-        (vars.levelComplete = new MemoryWatcher<bool>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xDC)))
-    };
-
+    vars.totalGameTime = 0;
+    
     vars.ResetVars = (EventHandler)((s, e) => {
         vars.totalGameTime = 0;
     });
     timer.OnStart += vars.ResetVars;
+}
 
-    vars.totalGameTime = 0;
+init {
+    vars.threadScan = new Thread(() => {
+        var levelManagerTarget = new SigScanTarget(0x5, "41 FF D3 49 BA ?? ?? ?? ?? ?? ?? ?? ?? 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 85 C0 74 24");
+        var menuManagerTarget = new SigScanTarget(0x2, "48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 89 30 48 8B CE 66 66 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 66 66 90");
+        
+        IntPtr levelManagerPtr = IntPtr.Zero;
+        IntPtr menuManagerPtr = IntPtr.Zero;
 
-    refreshRate = 200/3d;
+        while(levelManagerPtr == IntPtr.Zero || menuManagerPtr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+
+                if(levelManagerPtr == IntPtr.Zero && (levelManagerPtr = scanner.Scan(levelManagerTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Level Manager Found : " + levelManagerPtr.ToString("X"));
+
+                if(menuManagerPtr == IntPtr.Zero && (menuManagerPtr = scanner.Scan(menuManagerTarget)) != IntPtr.Zero)
+                    print("[Autosplitter] Menu Manager Found : " + menuManagerPtr.ToString("X"));
+
+                if(levelManagerPtr != IntPtr.Zero && menuManagerPtr != IntPtr.Zero)
+                    break;
+            }
+            if (levelManagerPtr != IntPtr.Zero && menuManagerPtr != IntPtr.Zero) {
+                vars.levelManager = new MemoryWatcher<IntPtr>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0));
+                vars.isPanelForced = new MemoryWatcher<bool>(new DeepPointer(menuManagerPtr, 0x0, 0x20, 0xD4));
+
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.levelName = new StringWatcher(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0x20, 0x14), 32)),
+                    (vars.roomId = new MemoryWatcher<int>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0x80))),
+                    (vars.time = new MemoryWatcher<float>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xAC))),
+                    (vars.levelComplete = new MemoryWatcher<bool>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xDC)))
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
 }
 
@@ -159,5 +164,6 @@ gameTime {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.ResetVars;
 }

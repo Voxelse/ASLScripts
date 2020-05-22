@@ -6,8 +6,6 @@ state("bgb64") {}
 state("bgb") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("w1", true, "World 1 - Candy");
     settings.Add("w2", true, "World 2 - Beach");
     settings.Add("w3", true, "World 3 - Cavern");
@@ -22,50 +20,55 @@ startup {
         settings.Add("l"+(worldLvl+4), true, "Level "+world+"-4");
         settings.Add("l"+(24+world), true, "Level "+world+"-Boss");
     }
+}
 
-    vars.SigScan = (Func<Process, SigScanTarget, IntPtr>)((proc, target) =>
-    {
+init {
+    vars.SigScan = (Func<SigScanTarget, IntPtr>)((target) => {
         print("[Autosplitter] Scanning memory");
         IntPtr ptr = IntPtr.Zero;
-        foreach (var page in proc.MemoryPages()) {
-            var scanner = new SignatureScanner(proc, page.BaseAddress, (int)page.RegionSize);
+        foreach (var page in game.MemoryPages()) {
+            var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
             if ((ptr = scanner.Scan(target)) != IntPtr.Zero)
                 break;
         }
         return ptr;
     });
-}
 
-init {
-    IntPtr ptr = IntPtr.Zero;
-    bool useDeepPtr = false;
-
-    if (memory.ProcessName.Equals("emuhawk", StringComparison.OrdinalIgnoreCase)) {
-        var target = new SigScanTarget(0, "05 00 00 00 ?? 00 00 00 00 ?? ?? 00 00 ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? F8 00 00 00");
-        IntPtr wram = vars.SigScan(game, target);
-        if (wram != IntPtr.Zero)
-            ptr = (IntPtr)((long)(wram-0x40)-(long)modules.First().BaseAddress);
-        useDeepPtr = true;
-    } else {
-        var target = new SigScanTarget(0, "FF 10 00 00 00 00 00 00 00 FF");
-        ptr = vars.SigScan(game, target);
-    }
-
-    if (ptr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    vars.start = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x3091)) : new MemoryWatcher<byte>(ptr+0x26AB);
+    vars.threadScan = new Thread(() => {
+        IntPtr ptr = IntPtr.Zero;
+        bool useDeepPtr = false;
+        while(ptr == IntPtr.Zero) {
+            if (memory.ProcessName.Equals("emuhawk", StringComparison.OrdinalIgnoreCase)) {
+                var target = new SigScanTarget(0, "05 00 00 00 ?? 00 00 00 00 ?? ?? 00 00 ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? F8 00 00 00");
+                IntPtr wram = vars.SigScan(target);
+                if (wram != IntPtr.Zero)
+                    ptr = (IntPtr)((long)(wram-0x40)-(long)modules.First().BaseAddress);
+                useDeepPtr = true;
+            } else {
+                var target = new SigScanTarget(0, "FF 10 00 00 00 00 00 00 00 FF");
+                ptr = vars.SigScan(target);
+            }
+            if (ptr != IntPtr.Zero) {
+                vars.start = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x3091)) : new MemoryWatcher<byte>(ptr+0x26AB);
     
-    vars.watchers = new MemoryWatcherList() {
-        (vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAF1)) : new MemoryWatcher<byte>(ptr+0x10B)),
-        (vars.endPortal = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA94)) : new MemoryWatcher<byte>(ptr+0xAE)),
-        (vars.endDisappear = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB01)) : new MemoryWatcher<byte>(ptr+0x11B))
-    };
-
-    refreshRate = 200/3d;
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.level = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xAF1)) : new MemoryWatcher<byte>(ptr+0x10B)),
+                    (vars.endPortal = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xA94)) : new MemoryWatcher<byte>(ptr+0xAE)),
+                    (vars.endDisappear = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0xB01)) : new MemoryWatcher<byte>(ptr+0x11B))
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+        
     vars.watchers.UpdateAll(game);
 }
 
@@ -77,4 +80,8 @@ start {
 split {
     if((vars.level.Current < 20 ? vars.endDisappear.Current == 1 : true) && vars.endPortal.Old == 1 && vars.endPortal.Current == 0)
         return settings["l"+vars.level.Current];
+}
+
+shutdown {
+    vars.threadScan.Abort();
 }

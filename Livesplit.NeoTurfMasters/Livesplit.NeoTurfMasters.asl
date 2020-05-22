@@ -1,8 +1,6 @@
 state("WinKawaks") {}
 
 startup {
-    refreshRate = 0.5;
-
     settings.Add("ger", true, "Germany");
     settings.Add("jap", true, "Japan");
     settings.Add("aus", true, "Australia");
@@ -14,32 +12,40 @@ startup {
         settings.Add("hole3_"+hole, true, "Hole "+hole, "aus");
         settings.Add("hole0_"+hole, true, "Hole "+hole, "usa");
     }
-
-    vars.scanTarget = new SigScanTarget(0, "01 FF FF 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? FF FF FF FF");
 }
 
 init {
-    IntPtr ptr = IntPtr.Zero;
-    
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
-        if((ptr = scanner.Scan(vars.scanTarget)) != IntPtr.Zero)
-            break;
-    }
+    vars.threadScan = new Thread(() => {
+        var scanTarget = new SigScanTarget(0, "01 FF FF 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? FF FF FF FF");
 
-    if (ptr == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
-
-    vars.watchers = new MemoryWatcherList() {
-        (vars.course = new MemoryWatcher<byte>(ptr+0x7)),
-        (vars.hole = new MemoryWatcher<byte>(ptr+0xB)),
-        (vars.end = new MemoryWatcher<byte>(ptr-0x648A))
-    };
+        IntPtr ptr = IntPtr.Zero;
     
-    refreshRate = 200/3d;
+        while(ptr == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+                if((ptr = scanner.Scan(scanTarget)) != IntPtr.Zero)
+                    break;
+            }
+            if (ptr != IntPtr.Zero) {
+                vars.watchers = new MemoryWatcherList() {
+                    (vars.course = new MemoryWatcher<byte>(ptr+0x7)),
+                    (vars.hole = new MemoryWatcher<byte>(ptr+0xB)),
+                    (vars.end = new MemoryWatcher<byte>(ptr-0x648A))
+                };
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();
 }
 
 update {
+    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+        return false;
+
     vars.watchers.UpdateAll(game);
 }
 
@@ -54,4 +60,8 @@ split {
 
 reset {
     return vars.course.Old != 0 && vars.course.Current == 0;
+}
+
+shutdown {
+    vars.threadScan.Abort();
 }

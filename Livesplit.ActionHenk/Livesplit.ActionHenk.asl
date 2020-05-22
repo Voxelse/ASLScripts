@@ -3,8 +3,6 @@
 state("ActionHenk") {}
 
 startup {
-    refreshRate = 0.5;
-
     // Array of number of medals required to unlock each new batch of levels
     vars.anyMedalsUnlock = new int[] {7, 16, 27, 38, 43, 57, 72, 85};
 
@@ -164,70 +162,74 @@ startup {
         int levelId = Array.IndexOf(vars.levelsCode[vars.lookingAtBatchNum.Current], vars.levelCode.Current);
         return vars.levelsMedals[vars.lookingAtBatchNum.Current][levelId] > (isRainbow ? (levelId < 5 ? 3 : 0) : 0);
     });
-
-    // AOB signature for ActionHenk:Start
-    vars.scanActionHenkStart = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C 8B 7D 08 8B 47 20");
-    // AOB signature for State_InGame:FixedUpdate
-    vars.scanStateInGameFixedUpdate = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C C7 45 DC 00 00 00 00");
 }
 
 init {
-    IntPtr ptrActionHenkStart = IntPtr.Zero;
-    IntPtr ptrStateInGameFixedUpdate = IntPtr.Zero;
+    // Create a separate thread to scan the game's memory
+    vars.threadScan = new Thread(() => {
+        // AOB signature for ActionHenk:Start
+        var scanActionHenkStart = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C 8B 7D 08 8B 47 20");
+        // AOB signature for State_InGame:FixedUpdate
+        var scanStateInGameFixedUpdate = new SigScanTarget(0, "55 8B EC 53 57 56 83 EC 1C C7 45 DC 00 00 00 00");
 
-    print("[Autosplitter] Scanning memory");
-    foreach (var page in game.MemoryPages()) {
-        var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+        IntPtr ptrActionHenkStart = IntPtr.Zero;
+        IntPtr ptrStateInGameFixedUpdate = IntPtr.Zero;
+        while(ptrActionHenkStart == IntPtr.Zero || ptrStateInGameFixedUpdate == IntPtr.Zero) {
+            print("[Autosplitter] Scanning memory");
+            foreach (var page in game.MemoryPages()) {
+                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-        if(ptrActionHenkStart == IntPtr.Zero && (ptrActionHenkStart = scanner.Scan(vars.scanActionHenkStart)) != IntPtr.Zero)
-            print("[Autosplitter] ActionHenk:Start Found : " + ptrActionHenkStart.ToString("X"));
+                if(ptrActionHenkStart == IntPtr.Zero && (ptrActionHenkStart = scanner.Scan(scanActionHenkStart)) != IntPtr.Zero)
+                    print("[Autosplitter] ActionHenk:Start Found : " + ptrActionHenkStart.ToString("X"));
 
-        if(ptrStateInGameFixedUpdate == IntPtr.Zero && (ptrStateInGameFixedUpdate = scanner.Scan(vars.scanStateInGameFixedUpdate)) != IntPtr.Zero)
-            print("[Autosplitter] State_InGame:FixedUpdate Found : " + ptrStateInGameFixedUpdate.ToString("X"));
+                if(ptrStateInGameFixedUpdate == IntPtr.Zero && (ptrStateInGameFixedUpdate = scanner.Scan(scanStateInGameFixedUpdate)) != IntPtr.Zero)
+                    print("[Autosplitter] State_InGame:FixedUpdate Found : " + ptrStateInGameFixedUpdate.ToString("X"));
 
-        if(ptrActionHenkStart != IntPtr.Zero && ptrStateInGameFixedUpdate != IntPtr.Zero)
-            break;
-    }
+                if(ptrActionHenkStart != IntPtr.Zero && ptrStateInGameFixedUpdate != IntPtr.Zero)
+                    break;
+            }
+            if (ptrActionHenkStart != IntPtr.Zero && ptrStateInGameFixedUpdate != IntPtr.Zero) {
+                int relPtrActionHenk = (int)((long)ptrActionHenkStart - (long)modules.First().BaseAddress);
+                int relPtrStateInGame = (int)((long)ptrStateInGameFixedUpdate - (long)modules.First().BaseAddress);
 
-    if(ptrActionHenkStart == IntPtr.Zero || ptrStateInGameFixedUpdate == IntPtr.Zero)
-        throw new Exception("[Autosplitter] Can't find signature");
+                // Global variable watchers
+                vars.globalWatchers = new MemoryWatcherList() {
+                    // LevelBatchManager
+                    // Number of medal earned in the current level
+                    (vars.bestMedal =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x34))),
+                    // Id/code of the current level
+                    (vars.levelCode =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x74))),
+                    // Total number of medals while in the main menu. Otherwise total number of rainbow medals
+                    (vars.numMedals =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x38))),
+                    // Id of the current batch
+                    (vars.lookingAtBatchNum = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x40))),
 
-    int relPtrActionHenk = (int)((long)ptrActionHenkStart - (long)modules.First().BaseAddress);
-    int relPtrStateInGame = (int)((long)ptrStateInGameFixedUpdate - (long)modules.First().BaseAddress);
+                    // GUIManager
+                    // The active GUI screen being displayed
+                    (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x568, 0x24, 0x4, 0x0, 0x20)))
+                };
 
-    // Global variable watchers
-    vars.globalWatchers = new MemoryWatcherList() {
-        // LevelBatchManager
-        // Number of medal earned in the current level
-        (vars.bestMedal =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x34))),
-        // Id/code of the current level
-        (vars.levelCode =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C, 0x74))),
-        // Total number of medals while in the main menu. Otherwise total number of rainbow medals
-        (vars.numMedals =         new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x38))),
-        // Id of the current batch
-        (vars.lookingAtBatchNum = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x40))),
+                // Medal tracker related watchers. Only used if both medal tracker and 45 Classics settings are checked
+                vars.medalTrackerWatchers = new MemoryWatcherList() {
+                    // LevelBatchManager
+                    // Pointer of currentLevel used to read track medal/bonus times with offsets
+                    (vars.trackTimePtr = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C))),
 
-        // GUIManager
-        // The active GUI screen being displayed
-        (vars.activeScreen = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x568, 0x24, 0x4, 0x0, 0x20)))
-    };
+                    // CheckpointManager
+                    // The finish time at track done
+                    (vars.finishTime = new MemoryWatcher<float>(new DeepPointer((int)relPtrStateInGame+0x16D, 0x24, 0x4, 0x0, 0x24)))
+                };
 
-    // Medal tracker related watchers. Only used if both medal tracker and 45 Classics settings are checked
-    vars.medalTrackerWatchers = new MemoryWatcherList() {
-        // LevelBatchManager
-        // Pointer of currentLevel used to read track medal/bonus times with offsets
-        (vars.trackTimePtr = new MemoryWatcher<int>(new DeepPointer((int)relPtrActionHenk+0x472, 0x24, 0x4, 0x0, 0x2C))),
-
-        // CheckpointManager
-        // The finish time at track done
-        (vars.finishTime = new MemoryWatcher<float>(new DeepPointer((int)relPtrStateInGame+0x16D, 0x24, 0x4, 0x0, 0x24)))
-    };
-
-    // Initialization of tracking if settings are checked
-    if(settings["medal_tracking"]) vars.UpdateMedalTracker();
-    if(settings["reset_tracking"]) vars.UpdateResetTracker();
-
-    refreshRate = 200/3d;
+                // Initialization of tracking if settings are checked
+                if(settings["medal_tracking"]) vars.UpdateMedalTracker();
+                if(settings["reset_tracking"]) vars.UpdateResetTracker();
+            } else {
+                Thread.Sleep(2000);
+            }
+        }
+        print("[Autosplitter] Done scanning");
+    });
+    vars.threadScan.Start();    
 }
 
 start {
@@ -236,6 +238,10 @@ start {
 }
 
 update {
+    // Don't run the rest of the script if globalWatchers isn't declared and therefore the game memory isn't yet found
+    if(!((IDictionary<string, Object>)vars).ContainsKey("globalWatchers"))
+        return false;
+
     vars.globalWatchers.UpdateAll(game);
 
     // Update old local variables
@@ -366,6 +372,7 @@ isLoading {
 }
 
 shutdown {
+    vars.threadScan.Abort();
     timer.OnStart -= vars.ResetVars;
     timer.OnReset -= vars.ResetDisplay;
 }
