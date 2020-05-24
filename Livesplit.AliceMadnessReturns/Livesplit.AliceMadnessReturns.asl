@@ -25,11 +25,11 @@ startup {
             Tuple.Create(true, "Always Elevenses - Clockwork Bomb", new Vector3f(-91048.02f, 947.9908f, -4818.92f)),
             Tuple.Create(true, "About Face - Liddell Memory", new Vector3f(-84845.62f, 6713.691f, -1947.022f)),
             // About Face
-            Tuple.Create(true, "About Face - Elevator", new Vector3f(-94517.91f, 7217.387f, -1193.873f)),
+            Tuple.Create(true, "About Face - Elevator", new Vector3f(-94505.41f, 7329.168f, -1228.23f)),
             Tuple.Create(true, "Smelling and Regurgitating", new Vector3f(16976.97f, -92662.27f, 1497.406f)),
             Tuple.Create(true, "Smelling and Regurgitating - Zone 2", new Vector3f(24200.41f, -105594f, 2662f)),
             Tuple.Create(true, "About Face - Back to Center", new Vector3f(-95021.53f, 4842.74f, -1734.546f)),
-            Tuple.Create(true, "About Face - Elevator bis", new Vector3f(-94479.67f, 7230.345f, -1193.873f)),
+            Tuple.Create(true, "About Face - Elevator bis", new Vector3f(-94505.41f, 7329.168f, -1228.23f)),
             Tuple.Create(true, "Cranking Up & Pressing Down", new Vector3f(19094.85f, 157968.5f, 479.3957f)),
             Tuple.Create(true, "Cranking Up & Pressing Down - Zone 2", new Vector3f(9029.268f, 181402.9f, 2866.101f)),
             Tuple.Create(true, "Assemblage (or Destruction)", new Vector3f(137887.9f, 8691.061f, -595.816f))
@@ -187,7 +187,7 @@ split {
         foreach(Tuple<bool, string, Vector3f> tup in loadList) {
             if(!isStartLoading && tup.Item1) continue;
             Vector3f vec = tup.Item3;
-            if(Math.Abs(vec.X-x) <= 1f && Math.Abs(vec.Y-y) <= 1f && Math.Abs(vec.Z-z) <= 1f)
+            if(Math.Abs(vec.X-x) <= 750f && Math.Abs(vec.Y-y) <= 750f && Math.Abs(vec.Z-z) <= 750f)
                 return vars.splits.Add(tup.Item2) && settings[tup.Item2];
         }
     }
