@@ -2,65 +2,74 @@ state ("minit") {}
 
 startup {
     settings.Add("end", true, "End (Boss/Toilet)");
+    
     settings.Add("items", false, "Items");
     settings.SetToolTip("items", "Split after items obtained");
+    settings.Add("item66", false, "Map Press Pass/Boatwood(Second Run): Split Boatwood first instead of Press Pass");
+    
     settings.Add("coins", false, "Coins");
     settings.SetToolTip("coins", "Split after coins obtained");
+    settings.Add("item27", false, "Map Home/Dog: Split Heart first instead of Coin");
+    settings.Add("item76", false, "Map Sneaker/Temple: Split Heart first instead of Coin");
+    
     settings.Add("hpups", false, "Hearts");
     settings.SetToolTip("hpups", "Split after hearts obtained");
+    
     settings.Add("maps", false, "Deaths");
     settings.SetToolTip("maps", "Split after dying in maps");
+    
     settings.Add("trans", false, "Transitions");
     settings.SetToolTip("trans", "Split on map transitions");
 
     settings.CurrentDefaultParent = "items";
-    // 1 Sword
-    settings.Add("item2", false, "Coffee");
-    settings.Add("item3", false, "Flashlight");
-    settings.Add("item4", false, "Flippers");
-    settings.Add("item5", false, "Lighthouse Key");
-    settings.Add("item6", false, "Watering Can");
-    settings.Add("item7", false, "Sword Thrower");
-    settings.Add("item8", false, "Fast Shoes");
-    settings.Add("item9", false, "Gardening Glove");
-    settings.Add("item10", false, "Boatwood");
-    settings.Add("item11", false, "Camera");
-    settings.Add("item12", false, "Basement Key");
-    settings.Add("item13", false, "Mega Sword");
-    // 15 Broken Sword
-    settings.Add("item16", false, "Press Pass");
-    settings.Add("item17", false, "Turbo Ink");
-    settings.Add("item18", false, "Grinder");
-    settings.Add("item19", false, "Trophy");
+    settings.Add("item16", false, "Watering Can");
+    settings.Add("item17", false, "Gardening Glove");
+    settings.Add("item26", false, "Fast Shoes");
+    settings.Add("item32", false, "Turbo Ink");
+    settings.Add("item45", false, "Sword Thrower");
+    settings.Add("item48", false, "Flippers");
+    settings.Add("item66_1", false, "Press Pass (same map as Boatwood (Second Run))");
+    settings.Add("item66_2", false, "Boatwood (Second Run) (same map as Press Pass)");
+    settings.Add("item68", false, "Camera)");
+    settings.Add("item71", false, "Boatwood");
+    settings.Add("item73", false, "Lighthouse Key");
+    settings.Add("item79", false, "Coffee");
+    settings.Add("item90", false, "Flashlight");
+    settings.Add("item101", false, "Basement Key");
+    settings.Add("item111", false, "Grinder");
+    settings.Add("item117", false, "Mega Sword");
+    settings.Add("item136", false, "Trophy");
 
     settings.CurrentDefaultParent = "coins";
-    settings.Add("coin0", false, "House");
-    settings.Add("coin1", false, "Coffee Sewer Out");
-    settings.Add("coin2", false, "Snake Cave");
-    settings.Add("coin3", false, "Hostel");
-    settings.Add("coin4", false, "Quicksand");
-    settings.Add("coin5", false, "Coffee Sewer In");
-    settings.Add("coin6", false, "Coffee Headland");
-    settings.Add("coin7", false, "Lost Truck");
-    settings.Add("coin8", false, "Temple Bat");
-    settings.Add("coin9", false, "Temple Death");
-    settings.Add("coin10", false, "Dumpster");
-    settings.Add("coin11", false, "Bandits");
-    settings.Add("coin12", false, "Turtle Island");
-    settings.Add("coin13", false, "Waterfall");
-    settings.Add("coin14", false, "Secret Wall");
-    settings.Add("coin15", false, "Waiting Room");
-    settings.Add("coin16", false, "Factory Sewer");
-    settings.Add("coin17", false, "Drill");
-    settings.Add("coin18", false, "Factory Truck");
+    settings.Add("item14", false, "Quicksand");
+    settings.Add("item25", false, "Dumpster");
+    settings.Add("item27_1", false, "Temple Death");
+    settings.Add("item39", false, "Temple Bat");
+    settings.Add("item43", false, "Lost Truck");
+    settings.Add("item46", false, "Hostel");
+    settings.Add("item49", false, "Bandits");
+    settings.Add("item56", false, "Coffee Sewer Out");
+    settings.Add("item72", false, "Waterfall");
+    settings.Add("item74", false, "Snake Cave");
+    settings.Add("item76_1", false, "Home");
+    settings.Add("item81", false, "Coffee Headland");
+    settings.Add("item84", false, "Coffee Sewer In");
+    settings.Add("item97", false, "Turtle Island");
+    settings.Add("item104", false, "Island House (Second Run)");
+    settings.Add("item119", false, "Drill");
+    settings.Add("item122", false, "Waiting Room");
+    settings.Add("item125", false, "Factory Truck");
+    settings.Add("item126", false, "Secret Wall");
+    settings.Add("item129", false, "Factory Sewer");
 
     settings.CurrentDefaultParent = "hpups";
-    settings.Add("hpup0", false, "Flower");
-    settings.Add("hpup1", false, "Bird");
-    settings.Add("hpup2", false, "Secret Temple");
-    settings.Add("hpup3", false, "Bull");
-    settings.Add("hpup4", false, "Sneaker Hut");
-    settings.Add("hpup5", false, "Dog");
+    settings.Add("item11", false, "Bull");
+    settings.Add("item27_2", false, "Sneaker Hut (same map as Coin Temple Death)");
+    settings.Add("item34", false, "Secret Temple");
+    settings.Add("item35", false, "Secret Temple (Second Run)");
+    settings.Add("item51", false, "Bird");
+    settings.Add("item76_2", false, "Dog (same map as Coin Home)");
+    settings.Add("item77", false, "Flower");
 
     settings.CurrentDefaultParent = "maps";
     settings.Add("map9", false, "Desert House");
@@ -80,8 +89,8 @@ startup {
     settings.Add("map107", false, "Island Right Puzzle");
     settings.Add("map109", false, "Island Right Tentacle");
     settings.Add("map111", false, "Box Grinder");
-    settings.Add("map117", false, "Cog");
-    settings.Add("map132", false, "Tent House");    
+    settings.Add("map117", false, "Conveyor Cog");
+    settings.Add("map132", false, "Tent House");
 
     settings.Add("trans40_9", false, "Temple for Desert House");
     settings.Add("trans40_47", false, "Temple for Hotel House");
@@ -111,183 +120,73 @@ startup {
     // 109  Home Island Labyrinth
     // 123  Factory Paper
 
-    vars.ItemNumber = (Func<bool[], int>)((itemArray) => {
-        var nbTrue = 0;
-        for(int i = 0; i < itemArray.Length; i++) {
-            if(itemArray[i]) nbTrue++;
-        }
-        return nbTrue;
-    });
+    vars.doubleItemRooms = new Dictionary<int, int>() {{27, 0},{66, 0},{76, 0}};
 
-    vars.SearchNewItem = (Func<string, string, bool[], int, string>)((line, type, itemArray, start) => {
-        var itemId = line.IndexOf("\""+type+"\\", start, StringComparison.Ordinal)+11;
-        for(int i = 0; i < itemArray.Length; i++) {
-            if(line.Substring(itemId+10*i, 1).Equals("1") && !itemArray[i]) {
-                itemArray[i] = true;
-                return type+i;
-            }
-        }
-        return vars.itemToSplit;
-    });
-
-    vars.FixLastSplit = (Action)(() => {
-        Time splitTime = timer.Run.Last().SplitTime;
-        splitTime.GameTime = vars.IGTime;
-        timer.Run.Last().SplitTime = splitTime;
-
-        Time bestTime = timer.Run.Last().BestSegmentTime;
-        bestTime.GameTime = vars.lastGoldSplit;
-        timer.Run.Last().BestSegmentTime = bestTime;
-    });
+    vars.transitionsDone = new HashSet<string>();
 
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.transitionsDone.Clear();
-        vars.oldIGTime = vars.IGTime = new TimeSpan(0);
-
-        vars.items = new bool[20];
-        vars.items[0] = vars.items[1] = true;
-        vars.coins = new bool[19];
-        vars.hpups = new bool[6];
-
-        vars.slotId = 0;
-        vars.itemToSplit = "";
-
-        vars.lastGoldSplit = new TimeSpan(0);
     });
     timer.OnStart += vars.timerResetVars;
 }
 
 init {
-    if(modules.First().ModuleMemorySize == 0x613000) { //ver1.0.0.0 Release
-        vars.map = new MemoryWatcher<int>(new DeepPointer(0x005DA568));
-        vars.end = new MemoryWatcher<byte>(new DeepPointer(0x005DC900));
-        vars.isDead = new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x28, 0x1C, 0xBC));
-        vars.isItem = new MemoryWatcher<int>(new DeepPointer(0x003D8104, 0x0, 0x0, 0x4, 0x4BC, 0xBC));
-        var appdata = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        vars.savePath = appdata.Substring(0, appdata.LastIndexOf('\\')) + @"\Local\minit\minitSaves\minit_v1.sav";
+    switch (modules.First().ModuleMemorySize) {
+        case 0x613000: version = "Release";
+            vars.watchers = new MemoryWatcherList() {
+                (vars.map = new MemoryWatcher<int>(new DeepPointer(0x005DA568))),
+                (vars.end = new MemoryWatcher<byte>(new DeepPointer(0x005DC900))),
+                (vars.isDead = new MemoryWatcher<bool>(new DeepPointer(0x003D8104, 0x0, 0x20, 0xC, 0xBC))),
+                (vars.isItem = new MemoryWatcher<bool>(new DeepPointer(0x003D8104, 0x0, 0xEC0, 0xC, 0xBC))),
+                (vars.gameTime = new MemoryWatcher<double>(new DeepPointer(0x005DA5A4, 0x80, 0x34, 0x10, 0x1B4, 0x0)))
+            };
+            break;
+        case 0x784000: version = "Speedrun";
+            vars.watchers = new MemoryWatcherList() {
+                (vars.map = new MemoryWatcher<int>(new DeepPointer(0x006AAA58))),
+                (vars.end = new MemoryWatcher<byte>(new DeepPointer(0x006ACDF0))),
+                (vars.isDead = new MemoryWatcher<bool>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68))),
+                (vars.isItem = new MemoryWatcher<bool>(new DeepPointer(0x00498610, 0x0, 0xEC8, 0xC, 0x68))),
+                (vars.gameTime = new MemoryWatcher<double>(new DeepPointer(0x006AAA30, 0x80, 0x2C, 0x10, 0xE70, 0x0)))
+            };
+            break;
+        default: version = "Unknown";
+            break;
     }
-    if(modules.First().ModuleMemorySize == 0x784000) { //ver1.0.0.3 Speedrun
-        vars.map = new MemoryWatcher<int>(new DeepPointer(0x006AAA58));
-        vars.end = new MemoryWatcher<byte>(new DeepPointer(0x006ACDF0));
-        vars.isDead = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x20, 0xC, 0x68));
-        vars.isItem = new MemoryWatcher<int>(new DeepPointer(0x00498610, 0x0, 0x3F0, 0xC, 0x8, 0x10, 0x490, 0x84, 0x7E8));
-        var steamPath = "";
-        using(Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
-            steamPath = Path.GetFullPath(Path.Combine(key.GetValue("SteamPath").ToString(), "userdata"));
-        DateTime lastModified = new DateTime(0);  
-        string steamUserPath = "";
-        foreach(string dir in Directory.GetDirectories(steamPath)) {
-            if(DateTime.Compare(lastModified, Directory.GetLastWriteTime(dir+@"\609490\remotecache.vdf")) < 0) {
-                lastModified = Directory.GetLastWriteTime(dir+@"\609490\remotecache.vdf");
-                steamUserPath = dir;
-            }
-        }
-        vars.savePath = steamUserPath + @"\609490\remote\minit_v1.sav";
-    }
-
-    vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
-
-    vars.transitionsDone = new HashSet<string>();
-    vars.oldIGTime = vars.IGTime = new TimeSpan(0);
-
-    vars.items = new bool[20];
-    vars.items[0] = vars.items[1] = true;
-    vars.coins = new bool[19];
-    vars.hpups = new bool[6];
-
-    vars.slotId = 0;
-    vars.itemToSplit = "";
-
-    vars.lastGoldSplit = new TimeSpan(0);
 }
 
 update {
-    vars.map.Update(game);
-    vars.isDead.Update(game);
-    vars.isItem.Update(game);
-    vars.end.Update(game);
+    if(version.Equals("Unknown"))
+        return false;
 
-    if(vars.lastTimeChange < File.GetLastWriteTime(vars.savePath).Ticks) {
-        vars.lastTimeChange = File.GetLastWriteTime(vars.savePath).Ticks;
-    
-        var fileStream = new FileStream(vars.savePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using(StreamReader reader = new StreamReader(fileStream)) {
-            while (reader.Peek() >= 0) {
-                StringComparison strComp = StringComparison.Ordinal;
-                
-                var line = reader.ReadLine();
-                
-                if(vars.slotId == 0) {
-                    var slot = line.Substring((vars.slotId = line.IndexOf("currentSlot", 300, strComp))+16, 1);                         //422
-                    if(slot.Equals("0"))        //759
-                        vars.slotId = line.IndexOf("\"slot0\\", vars.slotId+200, strComp);
-                    else if(slot.Equals("2"))   //17238
-                        vars.slotId = line.IndexOf("\"slot2\\", vars.slotId+16700, strComp);
-                    else if(slot.Equals("1")) { //33711
-                        vars.slotId = line.IndexOf("\"slot2\\", vars.slotId+16700, strComp);
-                        bool slotEmpty = line.Substring(vars.slotId+10, 33).Equals("{ \\\"slotIsEmpty\\\": [ 1.000000 ] }");
-                        vars.slotId = line.IndexOf("\"slot1\\", (slotEmpty ? vars.slotId : vars.slotId+16000), strComp);
-                    }
-                }
-
-                var readId = vars.slotId;
-
-                var nbCoin = int.Parse(line.Substring((readId = line.IndexOf("\"coins\\", readId, strComp))+12, 2).Split('.')[0]);      //1679
-                var nbHpup = int.Parse(line.Substring((readId = line.IndexOf("\"hpups\\", readId, strComp))+12, 1));                    //1875
-
-                readId += 12000;
-                if(nbCoin != vars.ItemNumber(vars.coins))                                                                               //14677
-                    vars.itemToSplit = vars.SearchNewItem(line, "coin", vars.coins, readId);
-
-                var nbItem = int.Parse(line.Substring((readId = line.IndexOf("\"items\\", readId, strComp))+12, 2).Split('.')[0])+1;    //15081
-    
-                string lineTime = line.Substring((readId = line.IndexOf("time", readId, strComp))+10);                                  //15174
-                TimeSpan baseIgt = TimeSpan.FromSeconds(int.Parse(lineTime.Substring(0, lineTime.IndexOf(".", strComp)))/60f);
-                int factor = (int)Math.Pow(10, 5);
-                vars.IGTime = new TimeSpan(((long)Math.Round((1.0f*baseIgt.Ticks/factor))*factor));
-
-                if(nbHpup != vars.ItemNumber(vars.hpups))
-                    vars.itemToSplit = vars.SearchNewItem(line, "hpup", vars.hpups, readId);                                            //15656
-                
-                if(settings["item19"] && !vars.items[19] && line.Substring(line.IndexOf("\"item\\", readId, strComp)+201, 1).Equals("1")) {
-                    vars.items[19] = true;
-                    vars.itemToSplit = "item19";
-                } else if(nbItem != vars.ItemNumber(vars.items))
-                    vars.itemToSplit = vars.SearchNewItem(line, "item", vars.items, readId);                                            //16196
-
-                if(vars.map.Current == 128 && timer.CurrentPhase == TimerPhase.Ended)
-                    vars.FixLastSplit();
-            }
-        }
-    }
-
-    if(vars.map.Current == 2 && timer.CurrentPhase == TimerPhase.Ended)
-        vars.FixLastSplit();
+    vars.watchers.UpdateAll(game);
 }
 
 start {
-    return vars.map.Current == 91 && vars.isItem.Old == 1 && vars.isItem.Current == 0;
+    return vars.map.Current == 91 && vars.isItem.Old && !vars.isItem.Current;
 }
 
 split {
-    if(((vars.map.Changed && vars.map.Current == 2) || (vars.map.Current == 128 && vars.end.Old == 0 && vars.end.Current == 128)) && settings["end"]) {
-        vars.lastGoldSplit = timer.Run.Last().BestSegmentTime.GameTime;
-        return true;
+    if(vars.isItem.Old && !vars.isItem.Current) {
+        string splitStr = "item"+vars.map.Current;
+        if(vars.doubleItemRooms.ContainsKey(vars.map.Current)) {
+            int splitNb = ++vars.doubleItemRooms[vars.map.Current];
+            return settings[splitStr+"_"+(settings[splitStr] ? 3-splitNb : splitNb)];
+        }
+        return settings.ContainsKey(splitStr) && settings[splitStr];
     }
 
-    if (!vars.itemToSplit.Equals("")) {
-        var itemSplit = vars.itemToSplit;
-        vars.itemToSplit = "";
-        if(settings.ContainsKey(itemSplit) && settings[itemSplit]) return true;
+    if(vars.isDead.Old && !vars.isDead.Current) {
+        return settings.ContainsKey("map"+vars.map.Old) && settings["map"+vars.map.Old];
     }
-
-    if(vars.isDead.Old == 1 && vars.isDead.Current == 0 && settings.ContainsKey("map"+vars.map.Old) && settings["map"+vars.map.Old])
-        return true;
 
     if(vars.map.Old != vars.map.Current) {
         var trans = "trans"+vars.map.Old+"_"+vars.map.Current;
-        if(settings.ContainsKey(trans) && settings[trans] && vars.transitionsDone.Add(trans))
-            return true;
+        return settings.ContainsKey(trans) && settings[trans] && vars.transitionsDone.Add(trans);
+    }
+
+    if(settings["end"] && ((vars.map.Changed && vars.map.Current == 2) || (vars.map.Current == 128 && vars.end.Old == 0 && vars.end.Current == 128))) {
+        return true;
     }
 }
 
@@ -296,14 +195,11 @@ reset {
 }
 
 isLoading {
-    return vars.isDead.Old == 1 || vars.isItem.Current == 1;
+    return true;
 }
 
 gameTime {
-    if(vars.oldIGTime.Ticks != vars.IGTime.Ticks) {
-        vars.oldIGTime = vars.IGTime;
-        return vars.IGTime;
-    }
+    return TimeSpan.FromSeconds(vars.gameTime.Current/60d);
 }
 
 shutdown {
