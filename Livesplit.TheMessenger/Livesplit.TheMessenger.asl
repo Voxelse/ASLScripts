@@ -6,7 +6,7 @@ startup {
     settings.Add("Inventory", false, "Inventory");
     settings.Add("Checkpoints", false, "Checkpoints");
     settings.Add("ILStart", false, "Start for IL Practice");
-    settings.Add("RoomTimer", false, "Individual Room Timer. Requires to reload the autosplitter and to load at least a save since game's boot up");
+    settings.Add("RoomTimer", false, "Individual Room Timer (requires to load at least a save since game's boot up)");
 
     settings.CurrentDefaultParent = "Levels";
     settings.Add("01_NinjaVillage", false, "Ninja Village");
@@ -560,9 +560,11 @@ init {
     vars.UIManagerSig = IntPtr.Zero;
     vars.DLCManagerSig = IntPtr.Zero;
 
-    vars.threadScan = new Thread(() => {
-        var sigsFound = false;
+    vars.oldRoomTimer = settings["RoomTimer"];
 
+    vars.manualEvent = new ManualResetEvent(true);
+
+    vars.threadScan = new Thread(() => {
         var scanLevelManager = new SigScanTarget(0, "0F B6 00 85 C0 0F 85 ?? 00 00 00 48 8D 4D 30 48 83 EC 20");
         var scanProgressionManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 8B 46 68 48 8B C8 BA 01 00 00 00");
         var scanInventoryManager = new SigScanTarget(0, "55 48 8B EC 56 48 83 EC 08 48 8B F1 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 63 56 28");
@@ -570,45 +572,56 @@ init {
         var scanDLCManager = new SigScanTarget(0, "48 83 EC 08 48 89 34 24 48 8B F1 0F B6 46 28");
         var scanGameManager = new SigScanTarget(0, "48 89 4D F0 48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 00 48 8B C8 83 39 00");
 
-        while(!sigsFound) {
-            print("[Autosplitter] Scanning memory");
-            foreach (var page in game.MemoryPages()) {
-                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
+        while(true) {
+            vars.manualEvent.WaitOne();
 
-                if(vars.levelManagerSig == IntPtr.Zero && ((vars.levelManagerSig = scanner.Scan(scanLevelManager)) != IntPtr.Zero))
-                    print("[Autosplitter] LevelManager Found : " + vars.levelManagerSig.ToString("X"));
+            var sigsFound = false;
+            while(!sigsFound) {
+                print("[Autosplitter] Scanning memory");
+                foreach (var page in game.MemoryPages()) {
+                    var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-                if(vars.progressionManagerSig == IntPtr.Zero && ((vars.progressionManagerSig = scanner.Scan(scanProgressionManager)) != IntPtr.Zero))
-                    print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerSig.ToString("X"));
+                    if(vars.levelManagerSig == IntPtr.Zero && ((vars.levelManagerSig = scanner.Scan(scanLevelManager)) != IntPtr.Zero))
+                        print("[Autosplitter] LevelManager Found : " + vars.levelManagerSig.ToString("X"));
 
-                if(vars.inventoryManagerSig == IntPtr.Zero && ((vars.inventoryManagerSig = scanner.Scan(scanInventoryManager)) != IntPtr.Zero))
-                    print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerSig.ToString("X"));
+                    if(vars.progressionManagerSig == IntPtr.Zero && ((vars.progressionManagerSig = scanner.Scan(scanProgressionManager)) != IntPtr.Zero))
+                        print("[Autosplitter] ProgressionManager Found : " + vars.progressionManagerSig.ToString("X"));
 
-                if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(scanUIManager)) != IntPtr.Zero))
-                    print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
+                    if(vars.inventoryManagerSig == IntPtr.Zero && ((vars.inventoryManagerSig = scanner.Scan(scanInventoryManager)) != IntPtr.Zero))
+                        print("[Autosplitter] InventoryManager Found : " + vars.inventoryManagerSig.ToString("X"));
 
-                if(vars.DLCManagerSig == IntPtr.Zero && ((vars.DLCManagerSig = scanner.Scan(scanDLCManager)) != IntPtr.Zero))
-                    print("[Autosplitter] DLCManager Found : " + vars.DLCManagerSig.ToString("X"));
+                    if(vars.UIManagerSig == IntPtr.Zero && ((vars.UIManagerSig = scanner.Scan(scanUIManager)) != IntPtr.Zero))
+                        print("[Autosplitter] UIManager Found : " + vars.UIManagerSig.ToString("X"));
 
-                if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(scanGameManager)) != IntPtr.Zero))
-                    print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
+                    if(vars.DLCManagerSig == IntPtr.Zero && ((vars.DLCManagerSig = scanner.Scan(scanDLCManager)) != IntPtr.Zero))
+                        print("[Autosplitter] DLCManager Found : " + vars.DLCManagerSig.ToString("X"));
 
-                sigsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && vars.DLCManagerSig != IntPtr.Zero && (settings["RoomTimer"] ? vars.gameManagerSig != IntPtr.Zero : true);
-                if(sigsFound)
-                    break;
+                    if(settings["RoomTimer"] && vars.gameManagerSig == IntPtr.Zero && ((vars.gameManagerSig = scanner.Scan(scanGameManager)) != IntPtr.Zero))
+                        print("[Autosplitter] GameManager Found : " + vars.gameManagerSig.ToString("X"));
+
+                    sigsFound = vars.levelManagerSig != IntPtr.Zero && vars.progressionManagerSig != IntPtr.Zero && vars.inventoryManagerSig != IntPtr.Zero && vars.UIManagerSig != IntPtr.Zero && vars.DLCManagerSig != IntPtr.Zero && (!settings["RoomTimer"] || vars.gameManagerSig != IntPtr.Zero);
+                    if(sigsFound)
+                        break;
+                }
+                if(!sigsFound) {
+                    Thread.Sleep(2000);
+                }
             }
-            if(!sigsFound) {
-                Thread.Sleep(2000);
-            }
+            print("[Autosplitter] Done scanning");
+            vars.manualEvent.Reset();
         }
-        print("[Autosplitter] Done scanning");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(vars.levelManagerSig == IntPtr.Zero)
+    if(vars.manualEvent.WaitOne(0))
         return false;
+
+    if(vars.oldRoomTimer != settings["RoomTimer"]) {
+        if((vars.oldRoomTimer = settings["RoomTimer"]))
+            vars.manualEvent.Set();
+    }
 
     vars.UpdatePointers();
 
