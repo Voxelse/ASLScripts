@@ -75,6 +75,9 @@ startup {
 }
 
 init {
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+
     vars.threadScan = new Thread(() => {
         var levelManagerTarget = new SigScanTarget(0x5, "41 FF D3 49 BA ?? ?? ?? ?? ?? ?? ?? ?? 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 85 C0 74 24");
         var menuManagerTarget = new SigScanTarget(0x2, "48 B8 ?? ?? ?? ?? ?? ?? ?? ?? 48 89 30 48 8B CE 66 66 90 49 BB ?? ?? ?? ?? ?? ?? ?? ?? 41 FF D3 66 66 90");
@@ -82,7 +85,7 @@ init {
         IntPtr levelManagerPtr = IntPtr.Zero;
         IntPtr menuManagerPtr = IntPtr.Zero;
 
-        while(levelManagerPtr == IntPtr.Zero || menuManagerPtr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -106,17 +109,18 @@ init {
                     (vars.time = new MemoryWatcher<float>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xAC))),
                     (vars.levelComplete = new MemoryWatcher<bool>(new DeepPointer(levelManagerPtr, 0x38, 0x10, 0x38, 0x8, 0x0, 0xDC)))
                 };
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.watchers.UpdateAll(game);
@@ -163,7 +167,11 @@ gameTime {
     return TimeSpan.FromSeconds(vars.totalGameTime + vars.time.Current);
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
     timer.OnStart -= vars.ResetVars;
 }

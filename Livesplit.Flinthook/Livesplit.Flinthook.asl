@@ -38,6 +38,9 @@ startup {
 }
 
 init {
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+
     vars.threadScan = new Thread(() => {
         var gameInfoTarget = new SigScanTarget(6, "55 8B EC 56 83 3D ?? ?? ?? ?? 00 75 18");
         var totalMissionTimeTarget = new SigScanTarget(13, "55 8B EC 57 56 53 83 EC 10 8B F1 8B 0D");
@@ -45,7 +48,7 @@ init {
         IntPtr gameInfoPtr = IntPtr.Zero;
         IntPtr contextInfoPtr = IntPtr.Zero;
     
-        while(gameInfoPtr == IntPtr.Zero || contextInfoPtr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -76,17 +79,18 @@ init {
                     (vars.contextInfo = new MemoryWatcher<int>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8))),
                     (vars.totalMissionTime = new MemoryWatcher<float>(new DeepPointer((int)relContextInfoPtr, 0x0, 0xC, 0x4, 0x8, 0x8, 0x58))),
                 };
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.watchers.UpdateAll(game);
@@ -124,7 +128,11 @@ gameTime {
     return TimeSpan.FromSeconds(vars.sumBountyTimes+(vars.trackTotalMissionTime ? vars.totalMissionTime.Current : 0));
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
     timer.OnStart -= vars.timerResetVars;
 }

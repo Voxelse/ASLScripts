@@ -15,12 +15,15 @@ startup {
 }
 
 init {
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+    
     vars.threadScan = new Thread(() => {
         var scanTarget = new SigScanTarget(0, "01 FF FF 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? FF FF FF FF");
 
         IntPtr ptr = IntPtr.Zero;
     
-        while(ptr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -33,17 +36,18 @@ init {
                     (vars.hole = new MemoryWatcher<byte>(ptr+0xB)),
                     (vars.end = new MemoryWatcher<byte>(ptr-0x648A))
                 };
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.watchers.UpdateAll(game);
@@ -62,6 +66,10 @@ reset {
     return vars.course.Old != 0 && vars.course.Current == 0;
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
 }

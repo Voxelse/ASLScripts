@@ -52,10 +52,13 @@ init {
         return ptr;
     });
 
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+
     vars.threadScan = new Thread(() => {
         IntPtr ptr = IntPtr.Zero;
         bool useDeepPtr = false;
-        while(ptr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             if (memory.ProcessName.Equals("emuhawk", StringComparison.OrdinalIgnoreCase)) {
                 var target = new SigScanTarget(0, "05 00 00 00 ?? 00 00 00 00 ?? ?? 00 00 ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? F8 00 00 00");
                 IntPtr wram = vars.SigScan(target);
@@ -75,17 +78,18 @@ init {
                     (vars.bossHp = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x1093)) : new MemoryWatcher<byte>(ptr+0x5A)),
                     (vars.star = useDeepPtr ? new MemoryWatcher<byte>(new DeepPointer((int)ptr, 0x13DE)) : new MemoryWatcher<byte>(ptr+0x3A5))
                 };
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
         
     vars.watchers.UpdateAll(game);
@@ -124,7 +128,11 @@ reset {
     return vars.life.Changed && vars.life.Current == 0;
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
     timer.OnStart -= vars.timerResetVars;
 }

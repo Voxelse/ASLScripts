@@ -10,6 +10,9 @@ startup {
 }
 
 init {
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+    
     vars.threadScan = new Thread(() => {
         SigScanTarget scanTarget = null;
         if (memory.ProcessName.ToLower().Contains("emuhawk"))
@@ -18,7 +21,7 @@ init {
             scanTarget = new SigScanTarget(0, "0F 0B ?? ?? 0F 0B ?? ?? 0F 0B 1A 29 0F 0B 29 30 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F 0F");
         
         IntPtr ptr = IntPtr.Zero;
-        while(ptr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -31,17 +34,18 @@ init {
                     (vars.level = new MemoryWatcher<byte>(ptr+0x8A)),
                     (vars.tiles = new MemoryWatcher<byte>(ptr+0x8C))
                 };
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
     
     vars.watchers.UpdateAll(game);
@@ -60,6 +64,10 @@ reset {
     return vars.start.Old != 0 && vars.start.Current == 0;
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
 }

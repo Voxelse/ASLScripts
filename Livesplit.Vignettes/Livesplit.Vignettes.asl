@@ -172,28 +172,33 @@ init {
     });
     
     vars.ptr = IntPtr.Zero;
+
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
     
     vars.threadScan = new Thread(() => {
         var target = new SigScanTarget(10, "89 85 50 FF FF FF 48 8B 0C 25 ?? ?? ?? ??");
         
-        while(vars.ptr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
                 if((vars.ptr = scanner.Scan(target)) != IntPtr.Zero)
                     break;
             }
-            if (vars.ptr == IntPtr.Zero) {
-                Thread.Sleep(2000);
+            if (vars.ptr != IntPtr.Zero) {
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(vars.ptr == IntPtr.Zero)
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.split = "";
@@ -254,7 +259,11 @@ reset {
     return vars.curObjCount < vars.oldObjCount || (vars.oldStartScreen != vars.curStartScreen && vars.curStartScreen == 1);
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
     timer.OnStart -= vars.timerResetVars;
 }

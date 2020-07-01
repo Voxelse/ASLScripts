@@ -165,6 +165,10 @@ startup {
 }
 
 init {
+    // Create a token to stop the thread when needed
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+
     // Create a separate thread to scan the game's memory
     vars.threadScan = new Thread(() => {
         // AOB signature for ActionHenk:Start
@@ -174,7 +178,8 @@ init {
 
         IntPtr ptrActionHenkStart = IntPtr.Zero;
         IntPtr ptrStateInGameFixedUpdate = IntPtr.Zero;
-        while(ptrActionHenkStart == IntPtr.Zero || ptrStateInGameFixedUpdate == IntPtr.Zero) {
+        
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -223,11 +228,12 @@ init {
                 // Initialization of tracking if settings are checked
                 if(settings["medal_tracking"]) vars.UpdateMedalTracker();
                 if(settings["reset_tracking"]) vars.UpdateResetTracker();
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();    
 }
@@ -238,8 +244,8 @@ start {
 }
 
 update {
-    // Don't run the rest of the script if globalWatchers isn't declared and therefore the game memory isn't yet found
-    if(!((IDictionary<string, Object>)vars).ContainsKey("globalWatchers"))
+    // Don't run the rest of the script if the thread scan is still scanning the game memory
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.globalWatchers.UpdateAll(game);
@@ -371,8 +377,15 @@ isLoading {
     return vars.activeScreen.Current == vars.GUIScreen_Loading || vars.activeScreen.Current == vars.GUIScreen_PostGame || vars.activeScreen.Current == vars.GUIScreen_Cutscene;
 }
 
+exit {
+    // Stop thread scan if running
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    // Stop thread scan if running
+    vars.tokenSource.Cancel();
+
     timer.OnStart -= vars.ResetVars;
     timer.OnReset -= vars.ResetDisplay;
 }

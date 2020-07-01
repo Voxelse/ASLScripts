@@ -26,7 +26,7 @@ startup {
     settings.Add("song5", true, "Deer");
 
     vars.InitVars = (Action)(() => {
-        vars.initFlag = 0;
+        vars.initFlag = false;
         vars.perkNb = 0;
         vars.knownVoices = new bool[] {true, false, false, false, false, false};
         vars.isPlayerSeeker = 0;
@@ -61,10 +61,13 @@ init {
         } else print("[Autosplitter] Empty Address");
     });
 
+    vars.tokenSource = new CancellationTokenSource();
+    vars.token = vars.tokenSource.Token;
+
     vars.threadScan = new Thread(() => {
         var scanTargetPlayer = new SigScanTarget(5, "48 83 C4 20 B8 ?? ?? ?? ?? 48 89 30 B8 ?? ?? ?? ?? 48 C7 00");
         IntPtr targetPtr = IntPtr.Zero;
-        while(targetPtr == IntPtr.Zero) {
+        while(!vars.token.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
             foreach (var page in game.MemoryPages()) {
                 var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
@@ -76,17 +79,18 @@ init {
             if (targetPtr != IntPtr.Zero) {
                 vars.playerManagerPtr = game.ReadValue<int>(targetPtr);
                 vars.UpdatePointers();
-            } else {
-                Thread.Sleep(2000);
+                print("[Autosplitter] Done scanning");
+                break;
             }
+            Thread.Sleep(2000);
         }
-        print("[Autosplitter] Done scanning");
+        print("[Autosplitter] Exit thread scan");
     });
     vars.threadScan.Start();
 }
 
 update {
-    if(!((IDictionary<string, Object>)vars).ContainsKey("watchers"))
+    if(vars.threadScan.IsAlive)
         return false;
 
     vars.watchers.UpdateAll(game);
@@ -101,8 +105,8 @@ update {
 start {
     //Need to check the second time unstunned because the game unstun/stun at first display and at actual start
     if(vars.stunned.Changed && vars.stunned.Current == 0) {
-        if(vars.initFlag == 0) {
-            vars.initFlag = 1;
+        if(!vars.initFlag) {
+            vars.initFlag = true;
         } else {
             vars.InitVars();
             return true;
@@ -138,7 +142,11 @@ split {
     }
 }
 
+exit {
+    vars.tokenSource.Cancel();
+}
+
 shutdown {
-    vars.threadScan.Abort();
+    vars.tokenSource.Cancel();
     timer.OnStart -= vars.timerResetVars;
 }
