@@ -15,9 +15,6 @@ startup {
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
 
-    vars.oldCP = vars.curCP = 0;
-    vars.oldRaceTime = vars.curRaceTime = 0;
-
     vars.ResetVars = (Action)(() => {
         vars.totalGameTime = 0;
         vars.lastCP = Tuple.Create("", 0);
@@ -100,8 +97,10 @@ init {
                 IntPtr loadMap = loadMapPtr+game.ReadValue<int>(loadMapPtr-0x4);
                 vars.watchers = new MemoryWatcherList() {
                     (vars.trackData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEA0))),
+                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x660, 0x0, 0x678))),
                     (vars.inRace = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x660, 0x0, 0x6C0)) {FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull}),
-                    (vars.raceInfo = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488))),
+                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
+                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
                     (vars.gameTime = new MemoryWatcher<int>(new DeepPointer(gameTime))),
                     (vars.loadMap = new StringWatcher(new DeepPointer(loadMap, 0x9), 24))
                 };
@@ -120,14 +119,6 @@ update {
         return false;
 
     vars.watchers.UpdateAll(game);
-
-    vars.oldRaceTime = vars.curRaceTime;
-    vars.curRaceTime = game.ReadValue<int>((IntPtr)vars.raceInfo.Current+0x4);
-    
-    vars.oldCP = vars.curCP;
-    vars.curCP = game.ReadValue<int>((IntPtr)vars.raceInfo.Current+0x8);
-
-    vars.finished = game.ReadValue<bool>((IntPtr)vars.raceInfo.Current+0x14);
 }
 
 start {
@@ -138,9 +129,9 @@ split {
     if(vars.trackData.Current == IntPtr.Zero || !vars.inRace.Current)
         return false;
 
-    if((vars.oldCP != vars.curCP || vars.oldRaceTime != vars.curRaceTime) && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.curCP)) {
-        vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.curCP);
-        if(vars.finished) {
+    if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
+        vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.checkpoint.Current);
+        if(vars.isFinished.Current) {
             vars.logTimes.Add(vars.GetCleanMapName(), vars.gameTime.Current);
             if(settings["track"]) {
                 return true;
@@ -165,7 +156,7 @@ isLoading {
 gameTime {
     if(vars.inRace.Old && !vars.inRace.Current) {
         vars.totalGameTime += vars.gameTime.Old;
-        if(!vars.finished || vars.lastCP.Item1 != vars.loadMap.Current) {
+        if(!vars.isFinished.Current || vars.lastCP.Item1 != vars.loadMap.Current) {
             int resetNb = 1;
             while(true) {
                 string timeEntry = vars.GetCleanMapName()+" (Reset "+resetNb+")";
@@ -179,8 +170,8 @@ gameTime {
     }
 
     if(vars.trackData.Current != IntPtr.Zero) {
-        if(vars.oldRaceTime != vars.curRaceTime) {
-            return TimeSpan.FromMilliseconds(vars.totalGameTime+vars.curRaceTime);
+        if(vars.raceTime.Current != vars.raceTime.Current) {
+            return TimeSpan.FromMilliseconds(vars.totalGameTime+vars.raceTime.Current);
         } else {
             return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace.Current ? vars.gameTime.Current : 0));
         }
