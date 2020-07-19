@@ -60,8 +60,8 @@ init {
                     timesAdd += "+"+kvp.Value;
             }
             string path = Directory.GetCurrentDirectory()+"\\TrackmaniaTimes\\"+
-                          System.DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss_")+
-                          category+vars.FormatTime(cumulatedTime, true)+".log";
+                          category+System.DateTime.Now.ToString("yyyyMMddHHmm_")+
+                          vars.FormatTime(cumulatedTime, true)+".log";
             string directoryName = Path.GetDirectoryName(path);
             if(!Directory.Exists(directoryName))
                 Directory.CreateDirectory(directoryName);
@@ -156,6 +156,10 @@ split {
     }
 }
 
+reset {
+    return vars.inRace.Current && !vars.inRace.Old && vars.GetTrackNumber() == "01";
+}
+
 isLoading {
     return true;
 }
@@ -177,7 +181,7 @@ gameTime {
     }
 
     if(vars.trackData.Current != IntPtr.Zero) {
-        if(vars.raceTime.Current != vars.raceTime.Current) {
+        if(vars.raceTime.Changed) {
             return TimeSpan.FromMilliseconds(vars.totalGameTime+vars.raceTime.Current);
         } else {
             return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace.Current ? vars.gameTime.Current : 0));
