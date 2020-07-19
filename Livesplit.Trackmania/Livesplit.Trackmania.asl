@@ -27,8 +27,8 @@ startup {
     });
     timer.OnStart += vars.timerResetVars;
 
-    vars.FormatTime = (Func<int, string>)((time) => {
-        return TimeSpan.FromMilliseconds(time).ToString("mm\\:ss\\.fff");
+    vars.FormatTime = (Func<int, bool, string>)((time, file) => {
+        return TimeSpan.FromMilliseconds(time).ToString(file ? @"mm\.ss\.fff" : @"mm\:ss\.fff");
     });
 
     vars.GetTrackNumber = (Func<string>)(() => {
@@ -48,13 +48,20 @@ init {
             string timesDisplay = "Display Times:"+Environment.NewLine+"   Sum   "+separator+" Segment "+separator+"  Track";
             int cumulatedTime = 0;
             bool isFirst = true;
+            string category = "";
             foreach(KeyValuePair<string, int> kvp in vars.logTimes) {
                 cumulatedTime += kvp.Value;
-                timesAdd += (isFirst ? "" : "+")+kvp.Value;
-                timesDisplay += Environment.NewLine+vars.FormatTime(cumulatedTime)+separator+vars.FormatTime(kvp.Value)+separator+kvp.Key;
-                isFirst = false;
+                timesDisplay += Environment.NewLine+vars.FormatTime(cumulatedTime, false)+separator+vars.FormatTime(kvp.Value, false)+separator+kvp.Key;
+                if(isFirst) {
+                    isFirst = false;
+                    timesAdd += kvp.Value;
+                    category = kvp.Key.Split('-')[0].Replace(' ', '_');
+                } else
+                    timesAdd += "+"+kvp.Value;
             }
-            string path = Directory.GetCurrentDirectory()+"\\TrackmaniaTimes\\trackmaniaTime"+System.DateTime.Now.ToString("yyyyMMddHHmmss")+".log";
+            string path = Directory.GetCurrentDirectory()+"\\TrackmaniaTimes\\"+
+                          System.DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss_")+
+                          category+vars.FormatTime(cumulatedTime, true)+".log";
             string directoryName = Path.GetDirectoryName(path);
             if(!Directory.Exists(directoryName))
                 Directory.CreateDirectory(directoryName);
@@ -96,11 +103,11 @@ init {
                 IntPtr gameTime = gameTimePtr+game.ReadValue<int>(gameTimePtr-0x4);
                 IntPtr loadMap = loadMapPtr+game.ReadValue<int>(loadMapPtr-0x4);
                 vars.watchers = new MemoryWatcherList() {
-                    (vars.trackData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEA0))),
-                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x660, 0x0, 0x678))),
-                    (vars.inRace = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x660, 0x0, 0x6C0)) {FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull}),
-                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
-                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEA0, 0xD78, 0x740, 0x28, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
+                    (vars.trackData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEC0))),
+                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x678))),
+                    (vars.inRace = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x6C0)) {FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull}),
+                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
+                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
                     (vars.gameTime = new MemoryWatcher<int>(new DeepPointer(gameTime))),
                     (vars.loadMap = new StringWatcher(new DeepPointer(loadMap, 0x9), 24))
                 };
