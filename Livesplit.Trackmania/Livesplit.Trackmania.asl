@@ -5,9 +5,9 @@ startup {
     settings.Add("checkpoint", false, "Split at every checkpoint");
 
     settings.Add("cStart", false, "Auto-start on every track");
-    settings.Add("cLog", true, "Log the game time of completed runs in a file (Livesplit folder -> TrackmaniaTimes)");
-    settings.Add("cTraining", false, "Training individual splits (overridden by settings 1 and 2)";
-    settings.Add("cSeason", false, "Season individual splits (overridden by settings 1 and 2)";
+    settings.Add("cLog", true, "Log the game time of completed runs into a file (Livesplit folder -> TrackmaniaTimes)");
+    settings.Add("cTraining", false, "Training individual splits (overridden by settings 1 and 2)");
+    settings.Add("cSeason", false, "Season individual splits (overridden by settings 1 and 2)");
 
     for (int trackId = 1; trackId < 26; trackId++) {
         string trackNb = trackId.ToString("D2");
@@ -35,7 +35,7 @@ startup {
         return vars.loadMap.Current.Substring(vars.loadMap.Current.Length-3, 2);
     });
 
-	vars.GetMapName = (Func<string>)(() => {
+    vars.GetMapName = (Func<string>)(() => {
 		return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), "(\\$[0-9a-fA-F]{3}|\\$[wnoitsgz]{1})", "");
 	});
 }
@@ -63,7 +63,6 @@ init {
                 Directory.CreateDirectory(directoryName);
             File.AppendAllText(path, timesDisplay);
         }
-    });
     });
     timer.OnSplit += vars.timerLogTimes;
 
