@@ -42,7 +42,7 @@ startup {
 
 init {
     vars.timerLogTimes = (EventHandler)((s, e) => {
-        if(timer.CurrentPhase == TimerPhase.Ended) {
+        if(settings["cLog"] && timer.CurrentPhase == TimerPhase.Ended) {
             string separator = "  |  ";
 	    string category = timer.Run.CategoryName;
             string timesDisplay = "Trackmania - "+category+Environment.NewLine+Environment.NewLine+"   Sum   "+separator+" Segment "+separator+"  Track";
