@@ -136,7 +136,7 @@ split {
     if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
         vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.checkpoint.Current);
         if(vars.isFinished.Current) {
-            vars.logTimes.Add(vars.GetCleanMapName(), vars.gameTime.Current);
+            vars.logTimes.Add(vars.GetMapName(), vars.gameTime.Current);
             if(settings["track"]) {
                 return true;
             } else {
@@ -167,7 +167,7 @@ gameTime {
         if(!vars.isFinished.Current || vars.lastCP.Item1 != vars.loadMap.Current) {
             int resetNb = 1;
             while(true) {
-                string timeEntry = vars.GetCleanMapName()+" (Reset "+resetNb+")";
+                string timeEntry = vars.GetMapName()+" (Reset "+resetNb+")";
                 if(!vars.logTimes.ContainsKey(timeEntry)) {
                     vars.logTimes.Add(timeEntry, vars.gameTime.Old);
                     break;
