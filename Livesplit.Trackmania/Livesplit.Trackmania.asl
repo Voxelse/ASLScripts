@@ -5,25 +5,21 @@ startup {
     settings.Add("checkpoint", false, "Split at every checkpoint");
 
     settings.Add("cStart", false, "Auto-start on every track");
-    settings.Add("cLog", true, "Log the game time of completed runs in a file (Livesplit folder -> TrackmaniaTimes)");
-    settings.Add("cTraining", false, "Training individual splits (overridden by settings 1 and 2)");
-    settings.Add("cSeason", false, "Season individual splits (overridden by settings 1 and 2)");
+    settings.Add("cLog", true, "Log detailed game time of completed runs into a file (Livesplit folder -> TrackmaniaTimes)");
+    settings.Add("cTraining", false, "Training individual splits (overridden by \"all tracks/checkpoints\" settings)");
+    settings.Add("cSeason", false, "Season individual splits (overridden by \"all tracks/checkpoints\" settings)");
 
     for (int trackId = 1; trackId < 26; trackId++) {
         string trackNb = trackId.ToString("D2");
         settings.Add("t"+trackNb, true, "Training - "+trackNb, "cTraining");
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
-
-    vars.ResetVars = (Action)(() => {
+    
+    vars.timerResetVars = (EventHandler)((s, e) => {
         vars.totalGameTime = 0;
         vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
-    });
-    vars.ResetVars();
-    
-    vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.ResetVars();
+        vars.startMap = vars.loadMap.Current;
     });
     timer.OnStart += vars.timerResetVars;
 
@@ -35,29 +31,34 @@ startup {
         return vars.loadMap.Current.Substring(vars.loadMap.Current.Length-3, 2);
     });
 
-    vars.GetMapName = (Func<string>)(() => {
-		return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), "(\\$[0-9a-fA-F]{3}|\\$[wnoitsgz]{1})", "");
-	});
+    vars.GetCleanMapName = (Func<string>)(() => {
+        return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), @"(\$[0-9a-fA-F]{3}|\$[wnoitsgz]{1})", "");
+    });
 }
 
 init {
     vars.timerLogTimes = (EventHandler)((s, e) => {
         if(settings["cLog"] && timer.CurrentPhase == TimerPhase.Ended) {
             string separator = "  |  ";
-	    string category = timer.Run.CategoryName;
-            string timesDisplay = "Trackmania - "+category+Environment.NewLine+Environment.NewLine+"   Sum   "+separator+" Segment "+separator+"  Track";
+            string category = timer.Run.CategoryName;
+            foreach(KeyValuePair<string, string> kvp in timer.Run.Metadata.VariableValueNames)
+                category += " - "+kvp.Value;
+            string timesDisplay = string.Concat("Trackmania - ", category, Environment.NewLine, Environment.NewLine,
+                                                "   Sum   ", separator, " Segment ", separator, "  Track", Environment.NewLine);
             int cumulatedTime = 0;
-            bool isFirst = true;
             foreach(KeyValuePair<string, int> kvp in vars.logTimes) {
                 cumulatedTime += kvp.Value;
-                timesDisplay += Environment.NewLine+vars.FormatTime(cumulatedTime, false)+separator+vars.FormatTime(kvp.Value, false)+separator+kvp.Key;
-                if(isFirst) {
-                    isFirst = false;
-                }
+                timesDisplay += string.Concat(vars.FormatTime(cumulatedTime, false), separator, vars.FormatTime(kvp.Value, false), separator, kvp.Key, Environment.NewLine);
             }
-            string path = Directory.GetCurrentDirectory()+"\\TrackmaniaTimes\\"+
-                          category+"_"+System.DateTime.Now.ToString("yyyyMMddHHmm_")+
-                          vars.FormatTime(cumulatedTime, true)+".log";
+            string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            long value = DateTimeOffset.Now.ToUnixTimeSeconds() / 30;
+            string base36DateTime = "";
+            while(value > 0) {
+                base36DateTime = chars[(int)(value % 36)] + base36DateTime;
+                value /= 36;
+            }
+            string path = string.Concat(Directory.GetCurrentDirectory(), "\\TrackmaniaTimes\\",
+                                        category, "_", base36DateTime, "_", vars.FormatTime(cumulatedTime, true), ".log");
             string directoryName = Path.GetDirectoryName(path);
             if(!Directory.Exists(directoryName))
                 Directory.CreateDirectory(directoryName);
@@ -125,8 +126,7 @@ update {
 }
 
 start {
-	vars.StartMap = vars.GetMapName();
-	return !vars.inRace.Old && vars.inRace.Current;
+    return !vars.inRace.Old && vars.inRace.Current && (vars.GetTrackNumber() == "01" || settings["cStart"]);
 }
 
 split {
@@ -136,7 +136,7 @@ split {
     if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
         vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.checkpoint.Current);
         if(vars.isFinished.Current) {
-            vars.logTimes.Add(vars.GetMapName(), vars.gameTime.Current);
+            vars.logTimes.Add(vars.GetCleanMapName(), vars.gameTime.Current);
             if(settings["track"]) {
                 return true;
             } else {
@@ -154,7 +154,7 @@ split {
 }
 
 reset {
-	return (vars.inRace.Current && !vars.inRace.Old) && (vars.StartMap == vars.GetMapName());
+    return vars.gameTime.Changed && vars.gameTime.Current == 0 && vars.startMap == vars.loadMap.Current;
 }
 
 isLoading {
@@ -166,8 +166,9 @@ gameTime {
         vars.totalGameTime += vars.gameTime.Old;
         if(!vars.isFinished.Current || vars.lastCP.Item1 != vars.loadMap.Current) {
             int resetNb = 1;
+            string cleanName = vars.GetCleanMapName();
             while(true) {
-                string timeEntry = vars.GetMapName()+" (Reset "+resetNb+")";
+                string timeEntry = cleanName+" (Reset "+resetNb+")";
                 if(!vars.logTimes.ContainsKey(timeEntry)) {
                     vars.logTimes.Add(timeEntry, vars.gameTime.Old);
                     break;
