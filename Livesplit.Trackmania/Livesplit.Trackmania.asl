@@ -5,7 +5,6 @@ startup {
     settings.Add("checkpoint", false, "Split at every checkpoint");
 
     settings.Add("cStart", false, "Auto-start on every track");
-    settings.Add("cLog", true, "Log detailed game time of completed runs into a file (Livesplit folder -> TrackmaniaTimes)");
     settings.Add("cTraining", false, "Training individual splits (overridden by \"all tracks/checkpoints\" settings)");
     settings.Add("cSeason", false, "Season individual splits (overridden by \"all tracks/checkpoints\" settings)");
 
@@ -14,12 +13,13 @@ startup {
         settings.Add("t"+trackNb, true, "Training - "+trackNb, "cTraining");
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
-    
+
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.totalGameTime = 0;
         vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
         vars.startMap = vars.loadMap.Current;
+        vars.trackDone = false;
     });
     timer.OnStart += vars.timerResetVars;
 
@@ -34,11 +34,25 @@ startup {
     vars.GetCleanMapName = (Func<string>)(() => {
         return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), @"(\$[0-9a-fA-F]{3}|\$[wnoitsgz]{1})", "");
     });
+
+    vars.SetLogTimes = (Action<int, string>)((time, detail) => {
+        vars.totalGameTime += time;
+        int logNb = 1;
+        string cleanName = vars.GetCleanMapName();
+        while(true) {
+            string timeEntry = cleanName + (logNb == 1 && String.IsNullOrEmpty(detail) ? "" : " ("+detail+logNb+")");
+            if(!vars.logTimes.ContainsKey(timeEntry)) {
+                vars.logTimes.Add(timeEntry, time);
+                break;
+            }
+            ++logNb;
+        }
+    });
 }
 
 init {
     vars.timerLogTimes = (EventHandler)((s, e) => {
-        if(settings["cLog"] && timer.CurrentPhase == TimerPhase.Ended) {
+        if(timer.CurrentPhase == TimerPhase.Ended) {
             string separator = "  |  ";
             string category = timer.Run.CategoryName;
             foreach(KeyValuePair<string, string> kvp in timer.Run.Metadata.VariableValueNames)
@@ -126,17 +140,16 @@ update {
 }
 
 start {
-    return !vars.inRace.Old && vars.inRace.Current && (vars.GetTrackNumber() == "01" || settings["cStart"]);
+    return vars.gameTime.Old == 0 && vars.gameTime.Current > 0 && (vars.GetTrackNumber() == "01" || settings["cStart"]);
 }
 
 split {
     if(vars.trackData.Current == IntPtr.Zero || !vars.inRace.Current)
         return false;
 
-    if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
+    if(vars.raceTime.Changed && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
         vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.checkpoint.Current);
         if(vars.isFinished.Current) {
-            vars.logTimes.Add(vars.GetCleanMapName(), vars.gameTime.Current);
             if(settings["track"]) {
                 return true;
             } else {
@@ -154,7 +167,7 @@ split {
 }
 
 reset {
-    return vars.gameTime.Changed && vars.gameTime.Current == 0 && vars.startMap == vars.loadMap.Current;
+    return vars.gameTime.Current == 0 && vars.startMap == vars.loadMap.Current;
 }
 
 isLoading {
@@ -162,29 +175,18 @@ isLoading {
 }
 
 gameTime {
-    if(vars.inRace.Old && !vars.inRace.Current) {
-        vars.totalGameTime += vars.gameTime.Old;
-        if(!vars.isFinished.Current || vars.lastCP.Item1 != vars.loadMap.Current) {
-            int resetNb = 1;
-            string cleanName = vars.GetCleanMapName();
-            while(true) {
-                string timeEntry = cleanName+" (Reset "+resetNb+")";
-                if(!vars.logTimes.ContainsKey(timeEntry)) {
-                    vars.logTimes.Add(timeEntry, vars.gameTime.Old);
-                    break;
-                }
-                ++resetNb;
-            }
-        }
+    if(vars.inRace.Current && !vars.inRace.Old) {
+        vars.trackDone = false;
+    } else if(vars.trackData.Current != IntPtr.Zero && vars.raceTime.Changed && vars.isFinished.Current) {
+        vars.trackDone = true;
+        vars.SetLogTimes(vars.raceTime.Current, "");
     }
 
-    if(vars.trackData.Current != IntPtr.Zero) {
-        if(vars.raceTime.Changed) {
-            return TimeSpan.FromMilliseconds(vars.totalGameTime+vars.raceTime.Current);
-        } else {
-            return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace.Current ? vars.gameTime.Current : 0));
-        }
+    if(vars.inRace.Old && !vars.inRace.Current && !vars.trackDone) {
+        vars.SetLogTimes(vars.gameTime.Old, "Reset ");
     }
+
+    return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace.Current && !vars.trackDone ? vars.gameTime.Current : 0));
 }
 
 exit {
