@@ -32,7 +32,7 @@ startup {
     });
 
     vars.GetCleanMapName = (Func<string>)(() => {
-        return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), @"(\$[0-9a-fA-F]{3}|\$[wnoitsgz]{1})", "");
+        return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), @"(\$[0-9a-fA-F]{3}|\$[wnoitsgzb]{1})", "");
     });
 
     vars.SetLogTimes = (Action<int, string>)((time, detail) => {
