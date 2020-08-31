@@ -120,7 +120,7 @@ init {
                     (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
                     (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
                     (vars.gameTime = new MemoryWatcher<int>(new DeepPointer(gameTime))),
-                    (vars.loadMap = new StringWatcher(new DeepPointer(loadMap, 0x9), 64))
+                    (vars.loadMap = new StringWatcher(new DeepPointer(loadMap, 0x9), 65))
                 };
                 print("[Autosplitter] Done scanning");
                 break;
