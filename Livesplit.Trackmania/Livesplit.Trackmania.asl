@@ -15,32 +15,55 @@ startup {
     }
 
     vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.startMap = vars.loadMap;
         vars.totalGameTime = 0;
+        vars.trackDone = false;
         vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
-        vars.startMap = vars.loadMap.Current;
-        vars.trackDone = false;
     });
     timer.OnStart += vars.timerResetVars;
 
-    vars.FormatTime = (Func<int, bool, string>)((time, file) => {
-        return TimeSpan.FromMilliseconds(time).ToString(file ? @"mm\.ss\.fff" : @"mm\:ss\.fff");
+    vars.timerLogTimes = (EventHandler)((s, e) => {
+        if(timer.CurrentPhase == TimerPhase.Ended) {
+            string separator = "  |  ";
+            string category = timer.Run.CategoryName;
+            foreach(string val in timer.Run.Metadata.VariableValueNames.Values)
+                category += " - "+val;
+            string timesDisplay = string.Concat("Trackmania - ", category, Environment.NewLine, Environment.NewLine,
+                                                "   Sum   ", separator, " Segment ", separator, "  Track", Environment.NewLine);
+            int cumulatedTime = 0;
+            foreach(KeyValuePair<string, int> kvp in vars.logTimes) {
+                cumulatedTime += kvp.Value;
+                timesDisplay += string.Concat(vars.FormatTime(cumulatedTime, false), separator, vars.FormatTime(kvp.Value, false), separator, kvp.Key, Environment.NewLine);
+            }
+            string base36Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            long minutesDateTime = (long)(DateTime.Now - new DateTime(2020, 07, 01)).TotalMinutes;
+            string base36DateTime = "";
+            while(minutesDateTime > 0) {
+                base36DateTime = base36Chars[(int)(minutesDateTime % 36)] + base36DateTime;
+                minutesDateTime /= 36;
+            }
+            string path = string.Concat(Directory.GetCurrentDirectory(), "\\TrackmaniaTimes\\",
+                                        category, "_", base36DateTime.PadLeft(5, '_'), "_", vars.FormatTime(cumulatedTime, true), ".log");
+            string directoryName = Path.GetDirectoryName(path);
+            if(!Directory.Exists(directoryName))
+                Directory.CreateDirectory(directoryName);
+            File.AppendAllText(path, timesDisplay);
+        }
     });
+    timer.OnSplit += vars.timerLogTimes;
 
-    vars.GetTrackNumber = (Func<string>)(() => {
-        return vars.loadMap.Current.Substring(vars.loadMap.Current.Length-3, 2);
-    });
+    vars.GetTrackNumber = (Func<string>)(() => vars.loadMap.Substring(vars.loadMap.Length-2));
 
-    vars.GetCleanMapName = (Func<string>)(() => {
-        return System.Text.RegularExpressions.Regex.Replace(vars.loadMap.Current.Substring(0, vars.loadMap.Current.Length-1), @"(\$[0-9a-fA-F]{3}|\$[wnoitsgz]{1})", "");
-    });
+    vars.IsRGBHex = (Func<char, bool>)((c) => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+
+    vars.FormatTime = (Func<int, bool, string>)((time, file) => TimeSpan.FromMilliseconds(time).ToString(file ? @"mm\.ss\.fff" : @"mm\:ss\.fff"));
 
     vars.SetLogTimes = (Action<int, string>)((time, detail) => {
         vars.totalGameTime += time;
         int logNb = 1;
-        string cleanName = vars.GetCleanMapName();
         while(true) {
-            string timeEntry = cleanName + (logNb == 1 && String.IsNullOrEmpty(detail) ? "" : " ("+detail+logNb+")");
+            string timeEntry = vars.loadMap + (logNb == 1 && String.IsNullOrEmpty(detail) ? "" : " ("+detail+logNb+")");
             if(!vars.logTimes.ContainsKey(timeEntry)) {
                 vars.logTimes.Add(timeEntry, time);
                 break;
@@ -51,35 +74,37 @@ startup {
 }
 
 init {
-    vars.timerLogTimes = (EventHandler)((s, e) => {
-        if(timer.CurrentPhase == TimerPhase.Ended) {
-            string separator = "  |  ";
-            string category = timer.Run.CategoryName;
-            foreach(KeyValuePair<string, string> kvp in timer.Run.Metadata.VariableValueNames)
-                category += " - "+kvp.Value;
-            string timesDisplay = string.Concat("Trackmania - ", category, Environment.NewLine, Environment.NewLine,
-                                                "   Sum   ", separator, " Segment ", separator, "  Track", Environment.NewLine);
-            int cumulatedTime = 0;
-            foreach(KeyValuePair<string, int> kvp in vars.logTimes) {
-                cumulatedTime += kvp.Value;
-                timesDisplay += string.Concat(vars.FormatTime(cumulatedTime, false), separator, vars.FormatTime(kvp.Value, false), separator, kvp.Key, Environment.NewLine);
+    vars.ReadLoadMap = (Func<IntPtr, string>)((ptr) => {
+        StringBuilder sb = new StringBuilder();
+        byte[] bytes = new byte[64];
+        int offset = 0;
+        UIntPtr readLength;
+        while(WinAPI.ReadProcessMemory(game.Handle, ptr + offset, bytes, (UIntPtr)bytes.Length, out readLength) && (int)readLength == bytes.Length) {
+            int o = 0;
+            while(o < bytes.Length) {
+                char c = (char)bytes[o];
+                if(c == 0) {
+                    if(sb.Length > 0) --sb.Length;
+                    return sb.ToString();
+                } else if(c == '$') {
+                    if(o+3 >= bytes.Length)
+                        break;
+
+                    if(vars.IsRGBHex((char)bytes[o+1]) && vars.IsRGBHex((char)bytes[o+2]) && vars.IsRGBHex((char)bytes[o+3])) {
+                        o += 4;
+                    } else {
+                        o += 2;
+                    }
+                    continue;
+                } else {
+                    o += 1;
+                    sb.Append(c);
+                }
             }
-            string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            long value = DateTimeOffset.Now.ToUnixTimeSeconds() / 30;
-            string base36DateTime = "";
-            while(value > 0) {
-                base36DateTime = chars[(int)(value % 36)] + base36DateTime;
-                value /= 36;
-            }
-            string path = string.Concat(Directory.GetCurrentDirectory(), "\\TrackmaniaTimes\\",
-                                        category, "_", base36DateTime, "_", vars.FormatTime(cumulatedTime, true), ".log");
-            string directoryName = Path.GetDirectoryName(path);
-            if(!Directory.Exists(directoryName))
-                Directory.CreateDirectory(directoryName);
-            File.AppendAllText(path, timesDisplay);
+            offset += o;
         }
+        return "";
     });
-    timer.OnSplit += vars.timerLogTimes;
 
     vars.tokenSource = new CancellationTokenSource();
     vars.token = vars.tokenSource.Token;
@@ -119,8 +144,8 @@ init {
                     (vars.inRace = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x6C0)) {FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull}),
                     (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
                     (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
-                    (vars.gameTime = new MemoryWatcher<int>(new DeepPointer(gameTime))),
-                    (vars.loadMap = new StringWatcher(new DeepPointer(loadMap, 0x9), 64))
+                    (vars.gameTime = new MemoryWatcher<int>(gameTime)),
+                    (vars.loadMapPtr = new MemoryWatcher<IntPtr>(loadMap))
                 };
                 print("[Autosplitter] Done scanning");
                 break;
@@ -137,6 +162,8 @@ update {
         return false;
 
     vars.watchers.UpdateAll(game);
+
+    vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
 }
 
 start {
@@ -147,13 +174,13 @@ split {
     if(vars.trackData.Current == IntPtr.Zero || !vars.inRace.Current)
         return false;
 
-    if(vars.raceTime.Changed && (vars.lastCP.Item1 != vars.loadMap.Current || vars.lastCP.Item2 < vars.checkpoint.Current)) {
-        vars.lastCP = Tuple.Create(vars.loadMap.Current, vars.checkpoint.Current);
+    if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint.Current)) {
+        vars.lastCP = Tuple.Create(vars.loadMap, vars.checkpoint.Current);
         if(vars.isFinished.Current) {
             if(settings["track"]) {
                 return true;
             } else {
-                string map = vars.loadMap.Current;
+                string map = vars.loadMap;
                 if(settings["cTraining"] && map.StartsWith("Training"))
                     return settings["t"+vars.GetTrackNumber()];
                     
@@ -167,7 +194,7 @@ split {
 }
 
 reset {
-    return vars.gameTime.Current == 0 && vars.startMap == vars.loadMap.Current;
+    return vars.gameTime.Current == 0 && vars.startMap == vars.loadMap;
 }
 
 isLoading {
@@ -177,12 +204,10 @@ isLoading {
 gameTime {
     if(vars.inRace.Current && !vars.inRace.Old) {
         vars.trackDone = false;
-    } else if(vars.trackData.Current != IntPtr.Zero && vars.raceTime.Changed && vars.isFinished.Current) {
+    } else if(vars.trackData.Current != IntPtr.Zero && vars.raceTime.Old != vars.raceTime.Current && vars.isFinished.Current) {
         vars.trackDone = true;
         vars.SetLogTimes(vars.raceTime.Current, "");
-    }
-
-    if(vars.inRace.Old && !vars.inRace.Current && !vars.trackDone) {
+    } else if(vars.inRace.Old && !vars.inRace.Current && !vars.trackDone) {
         vars.SetLogTimes(vars.gameTime.Old, "Reset ");
     }
 
@@ -191,7 +216,6 @@ gameTime {
 
 exit {
     vars.tokenSource.Cancel();
-    timer.OnSplit -= vars.timerLogTimes;
 }
 
 shutdown {
