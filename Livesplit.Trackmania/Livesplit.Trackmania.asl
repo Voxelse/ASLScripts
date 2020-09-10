@@ -75,30 +75,28 @@ startup {
 
 init {
     vars.ReadLoadMap = (Func<IntPtr, string>)((ptr) => {
-        StringBuilder sb = new StringBuilder();
-        byte[] bytes = new byte[64];
+        byte[] buffer = new byte[32];
+        List<byte> stringBytes = new List<byte>(buffer.Length);
         int offset = 0;
         UIntPtr readLength;
-        while(WinAPI.ReadProcessMemory(game.Handle, ptr + offset, bytes, (UIntPtr)bytes.Length, out readLength) && (int)readLength == bytes.Length) {
+        while(WinAPI.ReadProcessMemory(game.Handle, ptr + offset, buffer, (UIntPtr)buffer.Length, out readLength) && (int)readLength == buffer.Length) {
             int o = 0;
-            while(o < bytes.Length) {
-                char c = (char)bytes[o];
-                if(c == 0) {
-                    if(sb.Length > 0) --sb.Length;
-                    return sb.ToString();
+            while(o < buffer.Length) {
+                char c = (char)buffer[o];
+                if(c == '\0') {
+                    return Encoding.UTF8.GetString(stringBytes.ToArray(), 0, stringBytes.Count-1);
                 } else if(c == '$') {
-                    if(o+3 >= bytes.Length)
+                    if(o+3 >= buffer.Length) {
                         break;
-
-                    if(vars.IsRGBHex((char)bytes[o+1]) && vars.IsRGBHex((char)bytes[o+2]) && vars.IsRGBHex((char)bytes[o+3])) {
+                    } else if(vars.IsRGBHex((char)buffer[o+1]) && vars.IsRGBHex((char)buffer[o+2]) && vars.IsRGBHex((char)buffer[o+3])) {
                         o += 4;
                     } else {
                         o += 2;
                     }
                     continue;
                 } else {
+                    stringBytes.Add(buffer[o]);
                     o += 1;
-                    sb.Append(c);
                 }
             }
             offset += o;
