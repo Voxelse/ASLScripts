@@ -14,10 +14,12 @@ startup {
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
 
+    vars.inRace = false;
+    vars.trackDone = false;
+
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.startMap = vars.loadMap;
         vars.totalGameTime = 0;
-        vars.trackDone = false;
         vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
     });
@@ -138,10 +140,9 @@ init {
                 IntPtr loadMap = loadMapPtr+game.ReadValue<int>(loadMapPtr-0x4);
                 vars.watchers = new MemoryWatcherList() {
                     (vars.trackData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEC0))),
-                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x678))),
-                    (vars.inRace = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x6C0)) {FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull}),
-                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x4))),
-                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x140, 0x0, 0x32C0, 0x488, 0x14))),
+                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x680))),
+                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488, 0x4))),
+                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488, 0x14))),
                     (vars.gameTime = new MemoryWatcher<int>(gameTime)),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(loadMap))
                 };
@@ -162,6 +163,26 @@ update {
     vars.watchers.UpdateAll(game);
 
     vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
+
+    if(vars.trackData.Current == IntPtr.Zero)
+        return false;
+
+    if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
+        vars.inRace = true;
+    } else if(vars.gameTime.Current < vars.gameTime.Old) {
+        if(vars.inRace && vars.startMap != vars.loadMap) {
+            vars.SetLogTimes(vars.gameTime.Old, "Reset ");
+        }
+        vars.inRace = false;
+    }
+    
+    if(vars.raceTime.Old != vars.raceTime.Current && vars.isFinished.Current) {
+        vars.inRace = false;
+        vars.trackDone = true;
+        vars.SetLogTimes(vars.raceTime.Current, "");
+    } else {
+        vars.trackDone = false;
+    }
 }
 
 start {
@@ -169,7 +190,7 @@ start {
 }
 
 split {
-    if(vars.trackData.Current == IntPtr.Zero || !vars.inRace.Current)
+    if(!vars.inRace && !vars.trackDone)
         return false;
 
     if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint.Current)) {
@@ -200,16 +221,7 @@ isLoading {
 }
 
 gameTime {
-    if(vars.inRace.Current && !vars.inRace.Old) {
-        vars.trackDone = false;
-    } else if(vars.trackData.Current != IntPtr.Zero && vars.raceTime.Old != vars.raceTime.Current && vars.isFinished.Current) {
-        vars.trackDone = true;
-        vars.SetLogTimes(vars.raceTime.Current, "");
-    } else if(vars.inRace.Old && !vars.inRace.Current && !vars.trackDone) {
-        vars.SetLogTimes(vars.gameTime.Old, "Reset ");
-    }
-
-    return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace.Current && !vars.trackDone ? vars.gameTime.Current : 0));
+    return TimeSpan.FromMilliseconds(vars.totalGameTime+(vars.inRace ? vars.gameTime.Current : 0));
 }
 
 exit {
