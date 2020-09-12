@@ -14,17 +14,22 @@ startup {
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
 
-    vars.checkpoint = 0;
+    vars.loadMap = "";
     vars.isFinished = false;
     vars.raceTimeOld = vars.raceTimeNew = 0;
-
     vars.inRace = false;
 
-    vars.timerResetVars = (EventHandler)((s, e) => {
+    vars.ResetVars = (Action)(() => {
         vars.startMap = vars.loadMap;
         vars.totalGameTime = 0;
         vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
+    });
+
+    vars.ResetVars();
+
+    vars.timerResetVars = (EventHandler)((s, e) => {
+        vars.ResetVars();
     });
     timer.OnStart += vars.timerResetVars;
 
@@ -57,8 +62,6 @@ startup {
         }
     });
     timer.OnSplit += vars.timerLogTimes;
-
-    vars.GetCheckpoint = (Func<int>)(() => vars.isFinished ? Int32.MaxValue : vars.checkpoint);
 
     vars.GetTrackNumber = (Func<string>)(() => vars.loadMap.Substring(vars.loadMap.Length-2));
 
@@ -142,11 +145,13 @@ init {
                 print("[Autosplitter] Load Map Found : " + loadMapPtr.ToString("X"));
 
             if(trackDataPtr != IntPtr.Zero && gameTimePtr != IntPtr.Zero && loadMapPtr != IntPtr.Zero) {
+                IntPtr trackData = vars.GetAbsoluteAddress(trackDataPtr);
                 vars.watchers = new MemoryWatcherList() {
                     (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
-                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.GetAbsoluteAddress(trackDataPtr), 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull })
+                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull }),
                 };
+                vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x680));
                 print("[Autosplitter] Done scanning");
                 break;
             }
@@ -175,7 +180,8 @@ update {
     }
 
     if(vars.raceData.Current != IntPtr.Zero) {
-        vars.checkpoint = game.ReadValue<int>((IntPtr)vars.raceData.Current);
+        vars.checkpoint.Update(game);
+        
         vars.raceTimeOld = vars.raceTimeNew;
         vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current+0x4);
         vars.isFinished = game.ReadValue<bool>((IntPtr)vars.raceData.Current+0x14);
@@ -192,8 +198,8 @@ start {
 }
 
 split {
-    if(vars.raceTimeOld != vars.raceTimeNew && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.GetCheckpoint())) {
-        vars.lastCP = Tuple.Create(vars.loadMap, vars.GetCheckpoint());
+    if(vars.raceTimeOld != vars.raceTimeNew && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint.Current)) {
+        vars.lastCP = Tuple.Create(vars.loadMap, vars.checkpoint.Current);
         if(vars.isFinished) {
             if(settings["track"]) {
                 return true;
