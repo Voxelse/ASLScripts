@@ -14,8 +14,11 @@ startup {
         settings.Add("s"+trackNb, true, "Season - "+trackNb, "cSeason");
     }
 
+    vars.checkpoint = 0;
+    vars.isFinished = false;
+    vars.raceTimeOld = vars.raceTimeNew = 0;
+
     vars.inRace = false;
-    vars.trackDone = false;
 
     vars.timerResetVars = (EventHandler)((s, e) => {
         vars.startMap = vars.loadMap;
@@ -55,6 +58,8 @@ startup {
     });
     timer.OnSplit += vars.timerLogTimes;
 
+    vars.GetCheckpoint = (Func<int>)(() => vars.isFinished ? Int32.MaxValue : vars.checkpoint);
+
     vars.GetTrackNumber = (Func<string>)(() => vars.loadMap.Substring(vars.loadMap.Length-2));
 
     vars.IsRGBHex = (Func<char, bool>)((c) => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
@@ -76,6 +81,8 @@ startup {
 }
 
 init {
+    vars.GetAbsoluteAddress = (Func<IntPtr, IntPtr>)((ptr) => ptr+game.ReadValue<int>(ptr-0x4));
+
     vars.ReadLoadMap = (Func<IntPtr, string>)((ptr) => {
         byte[] buffer = new byte[32];
         List<byte> stringBytes = new List<byte>(buffer.Length);
@@ -135,16 +142,10 @@ init {
                 print("[Autosplitter] Load Map Found : " + loadMapPtr.ToString("X"));
 
             if(trackDataPtr != IntPtr.Zero && gameTimePtr != IntPtr.Zero && loadMapPtr != IntPtr.Zero) {
-                IntPtr trackData = trackDataPtr+game.ReadValue<int>(trackDataPtr-0x4);
-                IntPtr gameTime = gameTimePtr+game.ReadValue<int>(gameTimePtr-0x4);
-                IntPtr loadMap = loadMapPtr+game.ReadValue<int>(loadMapPtr-0x4);
                 vars.watchers = new MemoryWatcherList() {
-                    (vars.trackData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xEC0))),
-                    (vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x660, 0x0, 0x680))),
-                    (vars.raceTime = new MemoryWatcher<int>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488, 0x4))),
-                    (vars.isFinished = new MemoryWatcher<bool>(new DeepPointer(trackData, 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488, 0x14))),
-                    (vars.gameTime = new MemoryWatcher<int>(gameTime)),
-                    (vars.loadMapPtr = new MemoryWatcher<IntPtr>(loadMap))
+                    (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
+                    (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
+                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.GetAbsoluteAddress(trackDataPtr), 0xEC0, 0xD78, 0x8E8, 0xCD8, 0x148, 0x0, 0x32C0, 0x488)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull })
                 };
                 print("[Autosplitter] Done scanning");
                 break;
@@ -164,9 +165,6 @@ update {
 
     vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
 
-    if(vars.trackData.Current == IntPtr.Zero)
-        return false;
-
     if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
         vars.inRace = true;
     } else if(vars.gameTime.Current < vars.gameTime.Old) {
@@ -175,13 +173,17 @@ update {
         }
         vars.inRace = false;
     }
-    
-    if(vars.raceTime.Old != vars.raceTime.Current && vars.isFinished.Current) {
-        vars.inRace = false;
-        vars.trackDone = true;
-        vars.SetLogTimes(vars.raceTime.Current, "");
-    } else {
-        vars.trackDone = false;
+
+    if(vars.raceData.Current != IntPtr.Zero) {
+        vars.checkpoint = game.ReadValue<int>((IntPtr)vars.raceData.Current);
+        vars.raceTimeOld = vars.raceTimeNew;
+        vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current+0x4);
+        vars.isFinished = game.ReadValue<bool>((IntPtr)vars.raceData.Current+0x14);
+
+        if(vars.raceTimeOld != vars.raceTimeNew && vars.isFinished) {
+            vars.inRace = false;
+            vars.SetLogTimes(vars.raceTimeNew, "");
+        }
     }
 }
 
@@ -190,12 +192,9 @@ start {
 }
 
 split {
-    if(!vars.inRace && !vars.trackDone)
-        return false;
-
-    if(vars.raceTime.Old != vars.raceTime.Current && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint.Current)) {
-        vars.lastCP = Tuple.Create(vars.loadMap, vars.checkpoint.Current);
-        if(vars.isFinished.Current) {
+    if(vars.raceTimeOld != vars.raceTimeNew && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.GetCheckpoint())) {
+        vars.lastCP = Tuple.Create(vars.loadMap, vars.GetCheckpoint());
+        if(vars.isFinished) {
             if(settings["track"]) {
                 return true;
             } else {
