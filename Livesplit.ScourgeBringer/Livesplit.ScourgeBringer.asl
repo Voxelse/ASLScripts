@@ -2,7 +2,7 @@ state("ScourgeBringer") {}
 
 startup {
     settings.Add("realm", true, "Split at every realm");
-    settings.Add("realmCustom", false, "Custom Realm Split");
+    settings.Add("realmCustom", false, "Custom realm splits");
     
     settings.CurrentDefaultParent = "realmCustom";
     settings.Add("realm0", false, "The Entangled Ingress");
@@ -11,34 +11,29 @@ startup {
     settings.Add("realm3", false, "The Wasted Pit");
     // 4 Tuto
     settings.Add("realm5", false, "The Living Walls");
-    // settings.Add("realm6", false, "Realm 5");
-    // settings.Add("realm7", false, "Realm 6");
+    settings.Add("realm6", false, "The Old World");
 }
 
 init {
     vars.tokenSource = new CancellationTokenSource();
-    vars.token = vars.tokenSource.Token;
     
     vars.threadScan = new Thread(() => {
-        var scanGameStates = new SigScanTarget(0x17, "90 48 B9 ?? ?? ?? ?? ?? ?? ?? ?? BA 68 01 00 00");
-        
-        IntPtr ptrGameStates = IntPtr.Zero;
+        var scanGameStates = new SigScanTarget(0x32, "E9 ????????" + String.Concat(Enumerable.Repeat("48 8D 05 ???????? 48 8B 00 48 8B 00 C3", 6)) + "48 8D 05 ???????? 48 8B 00 48 8B 00 48 8D 0D");
+        var ptrGameStates = IntPtr.Zero;
+        var module = modules[0];
+        var scanner = new SignatureScanner(game, module.BaseAddress, module.ModuleMemorySize);
 
-        while(!vars.token.IsCancellationRequested) {
+        while(!vars.tokenSource.IsCancellationRequested) {
             print("[Autosplitter] Scanning memory");
-            foreach (var page in game.MemoryPages()) {
-                var scanner = new SignatureScanner(game, page.BaseAddress, (int)page.RegionSize);
 
-                if((ptrGameStates = scanner.Scan(vars.scanGameStates)) != IntPtr.Zero) {
-                    print("[Autosplitter] GameStates Found : " + ptrGameStates.ToString("X"));
-                    break;
-                }
-            }
-            if (ptrGameStates != IntPtr.Zero) {
+            if((ptrGameStates = scanner.Scan(scanGameStates)) != IntPtr.Zero) {
+                print("[Autosplitter] GameStates Found : " + ptrGameStates.ToString("X"));
+                IntPtr gameStates = ptrGameStates+0x4+game.ReadValue<int>(ptrGameStates);
                 vars.watchers = new MemoryWatcherList() {
-                    (vars.playerHP = new MemoryWatcher<int>(new DeepPointer(ptrGameStates, 0x0, 0x64))),
-                    (vars.tileset = new MemoryWatcher<int>(new DeepPointer(ptrGameStates, 0x0, 0xB8))),
-                    (vars.gameTime = new MemoryWatcher<float>(new DeepPointer(ptrGameStates, 0x0, 0xBC)))
+                    (vars.playerHP = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0xB4))),
+                    (vars.tileset = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0x128))),
+                    (vars.gameTime = new MemoryWatcher<float>(new DeepPointer(gameStates, 0x0, 0x8, 0x130))),
+                    (vars.end = new MemoryWatcher<bool>(new DeepPointer(gameStates, 0x0, 0x8, 0x1D5)))
                 };
                 print("[Autosplitter] Done scanning");
                 break;
@@ -62,11 +57,12 @@ start {
 }
 
 split {
-    return vars.tileset.Changed && (settings["realm"] || settings["realm"+vars.tileset.Old]);
+    return (vars.tileset.Changed && (settings["realm"] || settings["realm"+vars.tileset.Old]))
+        || (vars.end.Current && !vars.end.Old && (settings["realm"] || settings["realm6"]));
 }
 
 reset {
-    return vars.playerHP.Old > 0 && vars.playerHP.Current == 0;
+    return vars.playerHP.Current == 0 && vars.playerHP.Old > 0;
 }
 
 isLoading {
@@ -74,7 +70,7 @@ isLoading {
 }
 
 gameTime {
-    return TimeSpan.FromSeconds(vars.gameTime.Current == 0 ? vars.gameTime.Old : vars.gameTime.Current);
+    return TimeSpan.FromSeconds(vars.gameTime.Current);
 }
 
 exit {
