@@ -12,6 +12,7 @@ startup {
     // 4 Tuto
     settings.Add("realm5", false, "The Living Walls");
     settings.Add("realm6", false, "The Old World");
+    settings.Add("realm7", false, "The Beyond");
 }
 
 init {
@@ -57,8 +58,7 @@ start {
 }
 
 split {
-    return (vars.tileset.Changed && (settings["realm"] || settings["realm"+vars.tileset.Old]))
-        || (vars.end.Current && !vars.end.Old && (settings["realm"] || settings["realm6"]));
+    return (vars.tileset.Changed || vars.end.Current) && (settings["realm"] || settings["realm"+vars.tileset.Old]);
 }
 
 reset {
