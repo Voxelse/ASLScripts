@@ -5,12 +5,9 @@ startup {
     
     settings.Add("items", false, "Items");
     settings.SetToolTip("items", "Split after items obtained");
-    settings.Add("item66", false, "Map Press Pass/Boatwood(Second Run): Split Boatwood first instead of Press Pass");
     
     settings.Add("coins", false, "Coins");
     settings.SetToolTip("coins", "Split after coins obtained");
-    settings.Add("item27", false, "Map Home/Dog: Split Heart first instead of Coin");
-    settings.Add("item76", false, "Map Sneaker/Temple: Split Heart first instead of Coin");
     
     settings.Add("hpups", false, "Hearts");
     settings.SetToolTip("hpups", "Split after hearts obtained");
@@ -28,9 +25,10 @@ startup {
     settings.Add("item32", false, "Turbo Ink");
     settings.Add("item45", false, "Sword Thrower");
     settings.Add("item48", false, "Flippers");
-    settings.Add("item66_1", false, "Press Pass (same map as Boatwood (Second Run))");
-    settings.Add("item66_2", false, "Boatwood (Second Run) (same map as Press Pass)");
     settings.Add("item68", false, "Camera)");
+    settings.Add("item67", false, "Press Pass");
+    settings.Add("item66_1", false, "Press Pass (Second Run)");
+    settings.Add("item66_2", false, "Boatwood (Second Run)");
     settings.Add("item71", false, "Boatwood");
     settings.Add("item73", false, "Lighthouse Key");
     settings.Add("item79", false, "Coffee");
@@ -64,17 +62,17 @@ startup {
 
     settings.CurrentDefaultParent = "hpups";
     settings.Add("item11", false, "Bull");
-    settings.Add("item27_2", false, "Sneaker Hut (same map as Coin Temple Death)");
+    settings.Add("item27_2", false, "Sneaker Hut");
     settings.Add("item34", false, "Secret Temple");
     settings.Add("item35", false, "Secret Temple (Second Run)");
     settings.Add("item51", false, "Bird");
-    settings.Add("item76_2", false, "Dog (same map as Coin Home)");
+    settings.Add("item76_2", false, "Dog");
     settings.Add("item77", false, "Flower");
 
     settings.CurrentDefaultParent = "maps";
     settings.Add("map9", false, "Desert House");
     settings.Add("map22", false, "Lost Person");
-    settings.Add("map24", false, "Lost Person (SecondRun)");
+    settings.Add("map24", false, "Lost Person (Second Run)");
     settings.Add("map29", false, "Desert Tentacle");
     settings.Add("map47", false, "Hotel House");
     settings.Add("map52", false, "Tree Resident");
@@ -170,8 +168,7 @@ split {
     if(vars.isItem.Old && !vars.isItem.Current) {
         string splitStr = "item"+vars.map.Current;
         if(vars.doubleItemRooms.ContainsKey(vars.map.Current)) {
-            int splitNb = ++vars.doubleItemRooms[vars.map.Current];
-            return settings[splitStr+"_"+(settings[splitStr] ? 3-splitNb : splitNb)];
+            return settings[splitStr+"_"+(++vars.doubleItemRooms[vars.map.Current])))];
         }
         return settings.ContainsKey(splitStr) && settings[splitStr];
     }
