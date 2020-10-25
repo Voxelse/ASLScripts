@@ -168,7 +168,7 @@ split {
     if(vars.isItem.Old && !vars.isItem.Current) {
         string splitStr = "item"+vars.map.Current;
         if(vars.doubleItemRooms.ContainsKey(vars.map.Current)) {
-            return settings[splitStr+"_"+(++vars.doubleItemRooms[vars.map.Current])))];
+            return settings[splitStr+"_"+(++vars.doubleItemRooms[vars.map.Current])];
         }
         return settings.ContainsKey(splitStr) && settings[splitStr];
     }
