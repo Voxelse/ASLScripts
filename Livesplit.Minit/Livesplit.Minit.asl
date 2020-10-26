@@ -118,12 +118,9 @@ startup {
     // 109  Home Island Labyrinth
     // 123  Factory Paper
 
-    vars.doubleItemRooms = new Dictionary<int, int>() {{27, 0},{66, 0},{76, 0}};
-
-    vars.transitionsDone = new HashSet<string>();
-
     vars.timerResetVars = (EventHandler)((s, e) => {
-        vars.transitionsDone.Clear();
+        vars.doubleItemRooms = new Dictionary<int, int> {{27, 0},{66, 0},{76, 0}};
+        vars.transitionsDone = new HashSet<string>();
     });
     timer.OnStart += vars.timerResetVars;
 }
