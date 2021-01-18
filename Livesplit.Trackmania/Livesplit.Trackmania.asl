@@ -149,9 +149,9 @@ init {
                 vars.watchers = new MemoryWatcherList() {
                     (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
-                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xED0, 0xCD8, 0x148, 0x0, 0x32C0, 0x488)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull }),
+                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(trackData, 0xE70, 0xCD8, 0x148, 0x0, 0x32C0, 0x488)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull }),
                 };
-                vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xED0, 0xD88, 0x70, 0x690, 0x0, 0x708));
+                vars.checkpoint = new MemoryWatcher<int>(new DeepPointer(trackData, 0xE70, 0xD88, 0x70, 0x690, 0x0, 0x718));
                 print("[Autosplitter] Done scanning");
                 break;
             }
