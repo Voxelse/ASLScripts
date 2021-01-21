@@ -6,9 +6,10 @@ startup {
     settings.Add("cStart", false, "Auto-start on every track");
 
     settings.Add("track", true, "Split at every track done");
+    settings.Add("checkpoint", false, "Split at every checkpoint");
 
-    settings.Add("cTraining", false, "Training individual splits (overridden by \"all tracks\" settings)");
-    settings.Add("cSeason", false, "Season individual splits (overridden by \"all tracks\" settings)");
+    settings.Add("cTraining", false, "Training individual splits (overridden by \"all tracks/checkpoints\" settings)");
+    settings.Add("cSeason", false, "Season individual splits (overridden by \"all tracks/checkpoints\" settings)");
 
     for(int trackId = 1; trackId < 26; trackId++) {
         string trackNb = trackId.ToString("D2");
@@ -21,16 +22,19 @@ startup {
     vars.injectionMode = false;
     vars.wasInjectionMode = false;
     vars.injectPtr = IntPtr.Zero;
+    vars.injectDataPtr = IntPtr.Zero;
 
     vars.inRace = false;
 
     vars.loadMap = "";
-    vars.raceTimeNew = 0;
-    vars.isFinishedNew = false;
+    vars.raceTimeNew = vars.raceTimeOld = 0;
+    vars.isFinished = false;
+    vars.checkpoint = 0;
 
     vars.ResetVars = (Action)(() => {
         vars.startMap = vars.loadMap;
         vars.totalGameTime = 0;
+        vars.lastCP = Tuple.Create("", 0);
         vars.logTimes = new Dictionary<string, int>();
     });
 
@@ -199,11 +203,12 @@ init {
                     
                     game.Resume();
 
-                    IntPtr raceTime = vars.injectPtr+0x23;
-                    vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(raceTime, 0x0));
+                    vars.injectDataPtr = vars.injectPtr + 0x23;
+                    vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.injectDataPtr, 0x0));
                 } else {
                     vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.GetAbsoluteAddress(vars.raceTimePtr), 0xE70, 0xCD8, 0x148, 0x0, 0x32C0, 0x488));
                 }
+                vars.raceData.FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull;
 
                 vars.watchers = new MemoryWatcherList() {
                     (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
@@ -255,14 +260,12 @@ update {
 
     vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
 
-    vars.raceTimeOld = vars.raceTimeNew;
-    vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current + 0x4);
-
-    vars.isFinishedOld = vars.isFinishedNew;
-    vars.isFinishedNew = game.ReadValue<bool>((IntPtr)vars.raceData.Current + 0x14);
-
     if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
+        vars.checkpoint = 0;
         vars.inRace = true;
+        if(vars.injectionMode) {
+            game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
+        }
     } else if(vars.gameTime.Old > vars.gameTime.Current) {
         if(vars.inRace && vars.startMap != vars.loadMap) {
             vars.SetLogTimes(vars.gameTime.Old, "Reset ");
@@ -270,9 +273,19 @@ update {
         vars.inRace = false;
     }
 
-    if(vars.raceTimeOld != vars.raceTimeNew && vars.isFinishedNew) {
-        vars.inRace = false;
-        vars.SetLogTimes(vars.raceTimeNew, "");
+    vars.raceTimeOld = vars.raceTimeNew;
+
+    if(vars.inRace && vars.raceData.Current != IntPtr.Zero) {
+        vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current + 0x4);
+        vars.isFinished = game.ReadValue<bool>((IntPtr)vars.raceData.Current + 0x14);
+        
+        if(vars.raceTimeOld != vars.raceTimeNew) {
+            vars.checkpoint++;
+            if(vars.isFinished) {
+                vars.inRace = false;
+                vars.SetLogTimes(vars.raceTimeNew, "");
+            }
+        }
     }
 }
 
@@ -281,17 +294,22 @@ start {
 }
 
 split {
-    if(!vars.isFinishedOld && vars.isFinishedNew) {
-        if(settings["track"]) {
-            return true;
-        } else {
-            string map = vars.loadMap;
-            if(settings["cTraining"] && map.StartsWith("Training")) {
-                return settings["t"+vars.GetTrackNumber()];
-            }                
-            if(settings["cSeason"] && (map.StartsWith("Winter") || map.StartsWith("Spring") || map.StartsWith("Summer") || map.StartsWith("Fall"))) {
-                return settings["s"+vars.GetTrackNumber()];
+    if(vars.raceTimeOld != vars.raceTimeNew && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint)) {
+        vars.lastCP = Tuple.Create(vars.loadMap, vars.checkpoint);
+        if(vars.isFinished) {
+            if(settings["track"]) {
+                return true;
+            } else {
+                string map = vars.loadMap;
+                if(settings["cTraining"] && map.StartsWith("Training")) {
+                    return settings["t"+vars.GetTrackNumber()];
+                }                
+                if(settings["cSeason"] && (map.StartsWith("Winter") || map.StartsWith("Spring") || map.StartsWith("Summer") || map.StartsWith("Fall"))) {
+                    return settings["s"+vars.GetTrackNumber()];
+                }
             }
+        } else {
+            return settings["checkpoint"];
         }
     }
 }
