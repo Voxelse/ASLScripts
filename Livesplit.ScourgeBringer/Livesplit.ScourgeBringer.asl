@@ -31,10 +31,10 @@ init {
                 print("[Autosplitter] GameStates Found : " + ptrGameStates.ToString("X"));
                 IntPtr gameStates = ptrGameStates+0x4+game.ReadValue<int>(ptrGameStates);
                 vars.watchers = new MemoryWatcherList() {
-                    (vars.playerHP = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0xB4))),
-                    (vars.tileset = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0x128))),
-                    (vars.gameTime = new MemoryWatcher<float>(new DeepPointer(gameStates, 0x0, 0x8, 0x130))),
-                    (vars.end = new MemoryWatcher<bool>(new DeepPointer(gameStates, 0x0, 0x8, 0x1D5)))
+                    (vars.playerHP = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0xBC))),
+                    (vars.tileset = new MemoryWatcher<int>(new DeepPointer(gameStates, 0x0, 0x8, 0x130))),
+                    (vars.gameTime = new MemoryWatcher<float>(new DeepPointer(gameStates, 0x0, 0x8, 0x138))),
+                    (vars.end = new MemoryWatcher<bool>(new DeepPointer(gameStates, 0x0, 0x8, 0x22A)))
                 };
                 print("[Autosplitter] Done scanning");
                 break;
