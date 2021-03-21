@@ -1,8 +1,6 @@
 state("Trackmania") {}
 
 startup {
-    settings.Add("cInject", false, "Use advanced splitter support (experimental)");
-    
     settings.Add("cStart", false, "Auto-start on every track");
 
     settings.Add("track", true, "Split at every track done");
@@ -19,8 +17,6 @@ startup {
 
     vars.raceTimeSig = new byte[] { 0x41, 0x0F, 0x11, 0x01, 0xF2, 0x41, 0x0F, 0x11, 0x49, 0x10, 0x41, 0x89, 0x41, 0x18 };
 
-    vars.injectionMode = false;
-    vars.wasInjectionMode = false;
     vars.injectPtr = IntPtr.Zero;
     vars.injectDataPtr = IntPtr.Zero;
 
@@ -98,7 +94,7 @@ startup {
 }
 
 init {
-    vars.GetAbsoluteAddress = (Func<IntPtr, IntPtr>)((ptr) => ptr+game.ReadValue<int>(ptr-0x4));
+    vars.GetAbsoluteAddress = (Func<IntPtr, IntPtr>)((ptr) => ptr + 0x4 + game.ReadValue<int>(ptr));
 
     vars.ReadLoadMap = (Func<IntPtr, string>)((ptr) => {
         byte[] buffer = new byte[32];
@@ -130,21 +126,10 @@ init {
         return "";
     });
 
-    vars.StartThreadScan = (Action)(() => {
-        vars.threadScanInject = new Thread((ParameterizedThreadStart)vars.ScanGame);
-        vars.threadScanInject.Start(vars.injectionMode);
-    });
-
-    vars.ScanGame = (ParameterizedThreadStart)((needInjection) => {
-        var gameTimeTarget = new SigScanTarget(0x10, "C3 CC CC CC CC CC CC CC CC CC 89 0D");
-        var loadMapTarget = new SigScanTarget(0xC, "7F 23 45 33 C0");
-
-        SigScanTarget raceTimeTarget;
-        if((bool)needInjection) {
-            raceTimeTarget = new SigScanTarget(0x0, vars.raceTimeSig);
-        } else {
-            raceTimeTarget = new SigScanTarget(0x0, "48 8B 83 ?? ?? ?? ?? C7 44 24 ?? ?? ?? ?? ?? 48 89");
-        }
+    vars.ScanGame = new Thread(() => {
+        var gameTimeTarget = new SigScanTarget(0xC, "C3 CC CC CC CC CC CC CC CC CC 89 0D");
+        var loadMapTarget = new SigScanTarget(0x3, "48 8D 15 ???????? 48 8B CB E8 ???????? 48 8B 0D ???????? 48 83 C4 ?? 5B");
+        var raceTimeTarget = new SigScanTarget(0x0, vars.raceTimeSig);
         
         IntPtr gameTimePtr = IntPtr.Zero;
         IntPtr loadMapPtr = IntPtr.Zero;
@@ -169,51 +154,49 @@ init {
             }
 
             if(gameTimePtr != IntPtr.Zero && loadMapPtr != IntPtr.Zero && vars.raceTimePtr != IntPtr.Zero) {
-                if((bool)needInjection) {
-                    int timeStart = (int)(DateTime.Now - game.StartTime).TotalMilliseconds;
-                    if(timeStart < 10000) {
-                        Thread.Sleep(10000 - timeStart);
-                    }
-                    game.Suspend();
-
-                    vars.injectPtr = game.AllocateMemory(64);
-                    print("[Autosplitter] Trampoline : " + vars.injectPtr.ToString("X"));
-
-                    byte[] jmpArr = BitConverter.GetBytes((long)vars.injectPtr);
-                    byte[] retArr = BitConverter.GetBytes((long)vars.raceTimePtr+0xD);
-
-                    game.WriteBytes((IntPtr)vars.raceTimePtr,
-                        new byte[] {         0x57,                          // push rdi
-                                             0x48, 0xBF }.Concat(jmpArr)    // mov rdi, jumpArr
-                        .Concat(new byte[] { 0xFF, 0xE7,                    // jmp rdi
-                                             0x5F })                        // pop rdi
-                        .ToArray()
-                    );
-
-                    game.WriteBytes((IntPtr)vars.injectPtr,
-                            new byte[] {         0x5F }                                             // pop rdi
-                            .Concat((byte[])vars.raceTimeSig)                                       // (add sig)
-                            .Concat(new byte[] { 0x48, 0x89, 0x35, 0x0D, 0x00, 0x00, 0x00,          // mov [rip+0D], rsi
-                                                 0x57,                                              // push rdi
-                                                 0x48, 0xBF }).Concat(retArr)                       // mov rdi, retArr
-                            .Concat(new byte[] { 0xFF, 0xE7,                                        // jmp rdi
-                                                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })  // (pointer memory)
-                            .ToArray()
-                    );
-                    
-                    game.Resume();
-
-                    vars.injectDataPtr = vars.injectPtr + 0x23;
-                    vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.injectDataPtr, 0x0));
-                } else {
-                    vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.GetAbsoluteAddress(vars.raceTimePtr), 0xE70, 0xCD8, 0x148, 0x0, 0x32C0, 0x488));
+                int timeStart = (int)(DateTime.Now - game.StartTime).TotalMilliseconds;
+                if(timeStart < 10000) {
+                    Thread.Sleep(10000 - timeStart);
                 }
-                vars.raceData.FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull;
+                if(vars.token.IsCancellationRequested || game.HasExited) {
+                    print("[Autosplitter] Early Exit");
+                    break;
+                }
+                game.Suspend();
+
+                vars.injectPtr = game.AllocateMemory(64);
+                print("[Autosplitter] Trampoline : " + vars.injectPtr.ToString("X"));
+
+                byte[] jmpArr = BitConverter.GetBytes((long)vars.injectPtr);
+                byte[] retArr = BitConverter.GetBytes((long)vars.raceTimePtr+0xD);
+
+                game.WriteBytes((IntPtr)vars.raceTimePtr,
+                    new byte[] {         0x57,                          // push rdi
+                                         0x48, 0xBF }.Concat(jmpArr)    // mov rdi, jumpArr
+                    .Concat(new byte[] { 0xFF, 0xE7,                    // jmp rdi
+                                         0x5F })                        // pop rdi
+                    .ToArray()
+                );
+
+                game.WriteBytes((IntPtr)vars.injectPtr,
+                        new byte[] {         0x5F }                                             // pop rdi
+                        .Concat((byte[])vars.raceTimeSig)                                       // (add sig)
+                        .Concat(new byte[] { 0x48, 0x89, 0x35, 0x0D, 0x00, 0x00, 0x00,          // mov [rip+0D], rsi
+                                             0x57,                                              // push rdi
+                                             0x48, 0xBF }).Concat(retArr)                       // mov rdi, retArr
+                        .Concat(new byte[] { 0xFF, 0xE7,                                        // jmp rdi
+                                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })  // (pointer memory)
+                        .ToArray()
+                );
+                
+                game.Resume();
+
+                vars.injectDataPtr = vars.injectPtr + 0x23;
 
                 vars.watchers = new MemoryWatcherList() {
                     (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
-                    vars.raceData
+                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.injectDataPtr, 0x0)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull })
                 };
                     
                 print("[Autosplitter] Done scanning");
@@ -225,34 +208,23 @@ init {
     });
 
     vars.RemoveInject = (Action)(() => {
-        print("[Autosplitter] Remove injection");
-        game.Suspend();
-        game.WriteBytes((IntPtr)vars.raceTimePtr, (byte[])vars.raceTimeSig);
-        game.FreeMemory((IntPtr)vars.injectPtr);
-        game.Resume();
+        if(vars.raceTimePtr != IntPtr.Zero) {
+            print("[Autosplitter] Remove injection");
+            game.Suspend();
+            game.WriteBytes((IntPtr)vars.raceTimePtr, (byte[])vars.raceTimeSig);
+            game.FreeMemory((IntPtr)vars.injectPtr);
+            game.Resume();
+        }
     });
-
-    vars.injectionMode = settings["cInject"];
 
     vars.tokenSource = new CancellationTokenSource();
     vars.token = vars.tokenSource.Token;
 
-    vars.StartThreadScan();
+    vars.ScanGame.Start();
 }
 
 update {
-    vars.wasInjectionMode = vars.injectionMode;
-    vars.injectionMode = settings["cInject"];
-
-    if(vars.threadScanInject.IsAlive) {
-        return false;
-    }
-
-    if(vars.injectionMode != vars.wasInjectionMode) {
-        if(!vars.injectionMode) {
-            vars.RemoveInject();
-        }
-        vars.StartThreadScan();
+    if(vars.ScanGame.IsAlive) {
         return false;
     }
 
@@ -263,9 +235,7 @@ update {
     if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
         vars.checkpoint = 0;
         vars.inRace = true;
-        if(vars.injectionMode) {
-            game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
-        }
+        game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
     } else if(vars.gameTime.Old > vars.gameTime.Current) {
         if(vars.inRace && vars.startMap != vars.loadMap) {
             vars.SetLogTimes(vars.gameTime.Old, "Reset ");
@@ -328,10 +298,7 @@ gameTime {
 
 exit {
     vars.tokenSource.Cancel();
-
-    if(vars.injectionMode) {
-        vars.RemoveInject();
-    }
+    vars.RemoveInject();
 }
 
 shutdown {
@@ -341,7 +308,7 @@ shutdown {
     if(((IDictionary<string, Object>)vars).ContainsKey("tokenSource")) {
         vars.tokenSource.Cancel();
     }
-    if(vars.injectionMode && ((IDictionary<string, Object>)vars).ContainsKey("RemoveInject")) {
+    if(((IDictionary<string, Object>)vars).ContainsKey("RemoveInject")) {
         vars.RemoveInject();
     }
 }
