@@ -20,17 +20,16 @@ startup {
     vars.injectPtr = IntPtr.Zero;
     vars.injectDataPtr = IntPtr.Zero;
 
-    vars.inRace = false;
-
     vars.loadMap = "";
     vars.raceTimeNew = vars.raceTimeOld = 0;
+    vars.inRace = false;
     vars.isFinished = false;
     vars.checkpoint = 0;
 
     vars.ResetVars = (Action)(() => {
         vars.startMap = vars.loadMap;
         vars.totalGameTime = 0;
-        vars.lastCP = Tuple.Create("", 0);
+        vars.lastCP = Tuple.Create(vars.loadMap, 0);
         vars.logTimes = new Dictionary<string, int>();
     });
 
@@ -126,7 +125,7 @@ init {
         return "";
     });
 
-    vars.ScanGame = new Thread(() => {
+    vars.scanGame = new Thread(() => {
         var gameTimeTarget = new SigScanTarget(0xC, "C3 CC CC CC CC CC CC CC CC CC 89 0D");
         var loadMapTarget = new SigScanTarget(0x3, "48 8D 15 ???????? 48 8B CB E8 ???????? 48 8B 0D ???????? 48 83 C4 ?? 5B");
         var raceTimeTarget = new SigScanTarget(0x0, vars.raceTimeSig);
@@ -193,12 +192,14 @@ init {
 
                 vars.injectDataPtr = vars.injectPtr + 0x23;
 
+                IntPtr timerPtr = vars.GetAbsoluteAddress(gameTimePtr);
                 vars.watchers = new MemoryWatcherList() {
-                    (vars.gameTime = new MemoryWatcher<int>(vars.GetAbsoluteAddress(gameTimePtr))),
+                    (vars.gameTime = new MemoryWatcher<int>(timerPtr)),
+                    (vars.timerCountdown = new MemoryWatcher<float>(timerPtr+0xC)),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
                     (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.injectDataPtr, 0x0)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull })
                 };
-                    
+
                 print("[Autosplitter] Done scanning");
                 break;
             }
@@ -220,11 +221,11 @@ init {
     vars.tokenSource = new CancellationTokenSource();
     vars.token = vars.tokenSource.Token;
 
-    vars.ScanGame.Start();
+    vars.scanGame.Start();
 }
 
 update {
-    if(vars.ScanGame.IsAlive) {
+    if(vars.scanGame.IsAlive) {
         return false;
     }
 
@@ -232,27 +233,24 @@ update {
 
     vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
 
+    vars.inRace = vars.gameTime.Old > 0 && vars.timerCountdown.Current == 1f;
+
     if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
         vars.checkpoint = 0;
-        vars.inRace = true;
         game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
-    } else if(vars.gameTime.Old > vars.gameTime.Current) {
-        if(vars.inRace && vars.startMap != vars.loadMap) {
-            vars.SetLogTimes(vars.gameTime.Old, "Reset ");
-        }
-        vars.inRace = false;
+    } else if(vars.gameTime.Old > 0 && vars.gameTime.Current == 0 && !vars.isFinished && vars.startMap != vars.loadMap) {
+        vars.SetLogTimes(vars.gameTime.Old, "Reset ");
     }
 
     vars.raceTimeOld = vars.raceTimeNew;
 
-    if(vars.inRace && vars.raceData.Current != IntPtr.Zero) {
+    if(vars.inRace) {
         vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current + 0x4);
         vars.isFinished = game.ReadValue<bool>((IntPtr)vars.raceData.Current + 0x14);
         
-        if(vars.raceTimeOld != vars.raceTimeNew) {
+        if(vars.raceTimeOld != vars.raceTimeNew && vars.raceTimeNew > 0) {
             vars.checkpoint++;
             if(vars.isFinished) {
-                vars.inRace = false;
                 vars.SetLogTimes(vars.raceTimeNew, "");
             }
         }
@@ -264,7 +262,7 @@ start {
 }
 
 split {
-    if(vars.raceTimeOld != vars.raceTimeNew && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint)) {
+    if(vars.raceTimeOld != vars.raceTimeNew && vars.raceTimeNew > 0 && (vars.lastCP.Item1 != vars.loadMap || vars.lastCP.Item2 < vars.checkpoint)) {
         vars.lastCP = Tuple.Create(vars.loadMap, vars.checkpoint);
         if(vars.isFinished) {
             if(settings["track"]) {
@@ -293,7 +291,7 @@ isLoading {
 }
 
 gameTime {
-    return TimeSpan.FromMilliseconds(vars.totalGameTime + (vars.inRace ? vars.gameTime.Current : 0));
+    return TimeSpan.FromMilliseconds(vars.totalGameTime + (!vars.isFinished ? vars.gameTime.Current : 0));
 }
 
 exit {
