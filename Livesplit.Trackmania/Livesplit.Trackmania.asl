@@ -197,7 +197,6 @@ init {
                     (vars.gameTime = new MemoryWatcher<int>(timerPtr)),
                     (vars.timerCountdown = new MemoryWatcher<float>(timerPtr+0xC)),
                     (vars.loadMapPtr = new MemoryWatcher<IntPtr>(vars.GetAbsoluteAddress(loadMapPtr))),
-                    (vars.raceData = new MemoryWatcher<IntPtr>(new DeepPointer(vars.injectDataPtr, 0x0)) { FailAction = MemoryWatcher.ReadFailAction.SetZeroOrNull })
                 };
 
                 print("[Autosplitter] Done scanning");
@@ -233,20 +232,26 @@ update {
 
     vars.loadMap = vars.ReadLoadMap(vars.loadMapPtr.Current+0x9);
 
-    vars.inRace = vars.gameTime.Old > 0 && vars.timerCountdown.Current == 1f;
-
     if(vars.gameTime.Old == 0 && vars.gameTime.Current > 0) {
         vars.checkpoint = 0;
-        game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
-    } else if(vars.gameTime.Old > 0 && vars.gameTime.Current == 0 && !vars.isFinished && vars.startMap != vars.loadMap) {
-        vars.SetLogTimes(vars.gameTime.Old, "Reset ");
+        vars.isFinished = false;
+    } else if(vars.gameTime.Old > 0 && vars.gameTime.Current == 0) {
+        if(!vars.isFinished && vars.startMap != vars.loadMap) {
+            vars.SetLogTimes(vars.gameTime.Old, "Reset ");
+        }
+        vars.isFinished = false;
     }
+
+    vars.inRace = vars.gameTime.Current > 0 && vars.timerCountdown.Current == 1f;
+
+    IntPtr raceData = game.ReadPointer(game.ReadPointer((IntPtr)vars.injectDataPtr));
+    bool raceDataGotUpdated = raceData != IntPtr.Zero;
 
     vars.raceTimeOld = vars.raceTimeNew;
 
-    if(vars.inRace) {
-        vars.raceTimeNew = game.ReadValue<int>((IntPtr)vars.raceData.Current + 0x4);
-        vars.isFinished = game.ReadValue<bool>((IntPtr)vars.raceData.Current + 0x14);
+    if(vars.inRace && raceDataGotUpdated) {
+        vars.raceTimeNew = game.ReadValue<int>(raceData + 0x4);
+        vars.isFinished = game.ReadValue<bool>(raceData + 0x14);
         
         if(vars.raceTimeOld != vars.raceTimeNew && vars.raceTimeNew > 0) {
             vars.checkpoint++;
@@ -254,6 +259,10 @@ update {
                 vars.SetLogTimes(vars.raceTimeNew, "");
             }
         }
+    }
+    
+    if(raceDataGotUpdated) {
+        game.WriteValue<long>((IntPtr)vars.injectDataPtr, 0);
     }
 }
 
