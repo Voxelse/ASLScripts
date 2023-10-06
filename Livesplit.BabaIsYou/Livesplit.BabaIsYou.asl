@@ -38,7 +38,8 @@ startup {
         {0x5C9AC6E7, Tuple.Create("GL",  new int[] {0x34CA4C, 0x34DC9C, 0x34E5E4, 0x357F78})}, //27/03/2019 - 18:15:01
         {0x5C8F38F3, Tuple.Create("GK",  new int[] {0x34D9D4, 0x34EC24, 0x34F56C, 0x358EF8})}, //18/03/2019 - 22:32:48
         {0x5C8B9C84, Tuple.Create("GJ",  new int[] {0x34C9BC, 0x34DC0C, 0x34E554, 0x357EE8})}, //15/03/2019 - 14:26:18
-        {0x5C8580CE, Tuple.Create("GF",  new int[] {0x34A974, 0x34BBC4, 0x34C50C, 0x355E98})}  //13/03/2019 - 16:00:20
+        {0x5C8580CE, Tuple.Create("GF",  new int[] {0x34A974, 0x34BBC4, 0x34C50C, 0x355E98})}, //13/03/2019 - 16:00:20
+        {0x640E8E71, Tuple.Create("477C",  new int[] {0x581184, 0x5823D4, 0x582D1C, 0x68CE40})} //2023-03-13T02:46:09
     };
 
     settings.Add("lv", true, "Split at every level done");
